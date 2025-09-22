@@ -1,0 +1,16 @@
+# MPJ Tracker
+
+- Multi-user sign-in via Supabase magic link
+- Rooms/trades/tasks with per-task photo galleries (saved to Supabase Storage)
+- Installable PWA (Add to Home Screen)
+- Works on phone/tablet/laptop
+
+## Supabase setup
+1. Auth → URL Configuration → Site URL: your Netlify URL (e.g. https://YOUR-SITE.netlify.app)
+2. Storage → Create bucket **photos** → make it Public (or readable by `authenticated`).
+3. Database:
+   - Table: `projects` with columns: `id: text (PK)`, `name: text`, `data: jsonb`
+   - RLS: Enable, and add policy to allow `authenticated` users to select/insert/update `projects`.
+
+## Deploy on Netlify
+- New site → Import from Git → choose this repo → Build command: (empty), Publish dir: `/` (root).
