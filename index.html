@@ -11,10 +11,12 @@
 
 <!-- Create Supabase client early (before any use) -->
 <script>
+  // Create Supabase client early (and make it global)
   const SUPABASE_URL = "https://zpnruthpkmcnpxiztpf.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhc2U..."; /* "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  console.log("✅ Supabase client ready (head)");
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
+
+  window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  console.log("✅ Supabase client ready");
 </script>
  <link rel="manifest" href="manifest.webmanifest">
   <style>
