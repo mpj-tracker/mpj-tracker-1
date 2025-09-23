@@ -390,6 +390,53 @@ supabase.auth.onAuthStateChange((event, session) => {
     logoutBtn.style.display = "none";
   }
 });
-<script/>
+
+ <script>
+// keep the current session
+let session = null;
+
+// Sign Up (email + password)
+document.getElementById('signup')?.addEventListener('click', async () => {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  if (!email || !password) return alert('Please enter email and password');
+
+  const { data, error } = await supabase.auth.signUp({ email, password });
+  if (error) {
+    alert('Sign up failed: ' + error.message);
+    return;
+  }
+  // If email confirmation is OFF, user is signed in now.
+  // If ON, they must confirm via email before sign-in works.
+  alert('Sign up successful' + (data.user?.email_confirmed_at ? '' : ' — check your inbox if confirmations are enabled.'));
+});
+
+// Log In (email + password)
+document.getElementById('login')?.addEventListener('click', async () => {
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  if (!email || !password) return alert('Please enter email and password');
+
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    alert('Log in failed: ' + error.message);
+    return;
+  }
+  // session will update via onAuthStateChange below; render() will run.
+});
+
+// Re-render on auth state changes (sign in/out)
+supabase.auth.onAuthStateChange((_event, s) => {
+  session = s?.session ?? s; // works for v1/v2 payloads
+  render();
+});
+
+// On first load, check if already signed in
+(async () => {
+  const { data } = await supabase.auth.getSession();
+  session = data.session;
+  render();
+})();
+</script>
 </body>
 </html>
