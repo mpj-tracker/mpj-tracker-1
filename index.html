@@ -307,28 +307,26 @@ $$(".input[data-toggle]").forEach((cb) => {
     };
   });
 
-<script>
-  // --- Auth wiring (place just above function render) ---
 
+<!-- ================= AUTH WIRING ================= -->
+<script>
   // keep the current session
   let session = null;
 
   // whenever auth state changes (sign in/out), re-render
   supabase.auth.onAuthStateChange((_event, s) => {
-    // supports both v1 and v2 payload shapes
-    session = s?.session ?? s;
+    session = s?.session ?? s; // works for v1 and v2 payloads
     render();
   });
 
-  // on first load, check if already signed in, then render
+  // on page load, check if there is already a session, then render
   (async () => {
     const { data } = await supabase.auth.getSession();
     session = data.session;
     render();
   })();
-</script>
-      
 
+  // function to render either auth or project UI
   function render() {
     if (session) {
       renderAuth();
@@ -337,109 +335,75 @@ $$(".input[data-toggle]").forEach((cb) => {
     }
   }
 
+  // Service Worker registration (for PWA offline support)
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js?v=4").catch(() => {});
   }
-    // ------------------ AUTH FORM LOGIC ------------------
 
-// Reference form elements
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const signupBtn = document.getElementById("signup-btn");
-const loginBtn = document.getElementById("login-btn");
-const logoutBtn = document.getElementById("logout-btn");
+  // ---------------- AUTH FORM LOGIC ----------------
 
-// Sign up new user
-signupBtn.addEventListener("click", async () => {
-  const { data, error } = await supabase.auth.signUp({
-    email: emailInput.value,
-    password: passwordInput.value,
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+  const signupBtn = document.getElementById("signup-btn");
+  const loginBtn = document.getElementById("login-btn");
+  const logoutBtn = document.getElementById("logout-btn");
+
+  // Sign up new user
+  signupBtn.addEventListener("click", async () => {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    if (!email || !password) return alert("Please enter email and password");
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+
+    if (error) {
+      alert("Sign up failed: " + error.message);
+    } else {
+      alert(
+        "Sign up successful! Check your email for confirmation."
+      );
+    }
   });
-  if (error) {
-    alert("Sign up error: " + error.message);
-  } else {
-    alert("Sign up successful! Check your email for confirmation.");
-  }
-});
 
-// Log in existing user
-loginBtn.addEventListener("click", async () => {
-  const { data, error } = await supabase.auth.signInWithPassword({
-    email: emailInput.value,
-    password: passwordInput.value,
+  // Log in existing user
+  loginBtn.addEventListener("click", async () => {
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    if (!email || !password) return alert("Please enter email and password");
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      alert("Login error: " + error.message);
+    } else {
+      alert("Login successful!");
+    }
   });
-  if (error) {
-    alert("Login error: " + error.message);
-  } else {
-    alert("Login successful!");
-  }
-});
 
-// Log out user
-logoutBtn.addEventListener("click", async () => {
-  const { error } = await supabase.auth.signOut();
-  if (error) {
-    alert("Logout error: " + error.message);
-  } else {
-    alert("Logged out.");
-  }
-});
+  // Log out user
+  logoutBtn.addEventListener("click", async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      alert("Logout error: " + error.message);
+    } else {
+      alert("Logged out.");
+    }
+  });
 
-// Show/hide logout button depending on session
-supabase.auth.onAuthStateChange((event, session) => {
-  if (session) {
-    logoutBtn.style.display = "block";
-  } else {
-    logoutBtn.style.display = "none";
-  }
-});
-
- <script>
-// keep the current session
-let session = null;
-
-// Sign Up (email + password)
-document.getElementById('signup')?.addEventListener('click', async () => {
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
-  if (!email || !password) return alert('Please enter email and password');
-
-  const { data, error } = await supabase.auth.signUp({ email, password });
-  if (error) {
-    alert('Sign up failed: ' + error.message);
-    return;
-  }
-  // If email confirmation is OFF, user is signed in now.
-  // If ON, they must confirm via email before sign-in works.
-  alert('Sign up successful' + (data.user?.email_confirmed_at ? '' : ' — check your inbox if confirmations are enabled.'));
-});
-
-// Log In (email + password)
-document.getElementById('login')?.addEventListener('click', async () => {
-  const email = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
-  if (!email || !password) return alert('Please enter email and password');
-
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) {
-    alert('Log in failed: ' + error.message);
-    return;
-  }
-  // session will update via onAuthStateChange below; render() will run.
-});
-
-// Re-render on auth state changes (sign in/out)
-supabase.auth.onAuthStateChange((_event, s) => {
-  session = s?.session ?? s; // works for v1/v2 payloads
-  render();
-});
-
-// On first load, check if already signed in
-(async () => {
-  const { data } = await supabase.auth.getSession();
-  session = data.session;
-  render();
-})();
+  // Show/hide logout button depending on session
+  supabase.auth.onAuthStateChange((_event, session) => {
+    if (session) {
+      logoutBtn.style.display = "block";
+    } else {
+      logoutBtn.style.display = "none";
+    }
+  });
 </script>
 </body>
 </html>
