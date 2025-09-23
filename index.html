@@ -60,6 +60,14 @@
   </style>
 </head>
 <body>
+  <div id="auth-box">
+  <h2>Login / Sign Up</h2>
+  <input id="email" type="email" placeholder="Enter your email" />
+  <input id="password" type="password" placeholder="Enter your password" />
+  <button id="signup-btn">Sign Up</button>
+  <button id="login-btn">Log In</button>
+  <button id="logout-btn" style="display:none;">Log Out</button>
+</div>
   <div class="header">
     <div class="hi">
       <div class="logo"><img src="mpj-logo.png" alt="logo"><span>M Philips Joinery LTD</span></div>
@@ -329,6 +337,59 @@ $$(".input[data-toggle]").forEach((cb) => {
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js?v=4").catch(() => {});
   }
+    // ------------------ AUTH FORM LOGIC ------------------
+
+// Reference form elements
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const signupBtn = document.getElementById("signup-btn");
+const loginBtn = document.getElementById("login-btn");
+const logoutBtn = document.getElementById("logout-btn");
+
+// Sign up new user
+signupBtn.addEventListener("click", async () => {
+  const { data, error } = await supabase.auth.signUp({
+    email: emailInput.value,
+    password: passwordInput.value,
+  });
+  if (error) {
+    alert("Sign up error: " + error.message);
+  } else {
+    alert("Sign up successful! Check your email for confirmation.");
+  }
+});
+
+// Log in existing user
+loginBtn.addEventListener("click", async () => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: emailInput.value,
+    password: passwordInput.value,
+  });
+  if (error) {
+    alert("Login error: " + error.message);
+  } else {
+    alert("Login successful!");
+  }
+});
+
+// Log out user
+logoutBtn.addEventListener("click", async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    alert("Logout error: " + error.message);
+  } else {
+    alert("Logged out.");
+  }
+});
+
+// Show/hide logout button depending on session
+supabase.auth.onAuthStateChange((event, session) => {
+  if (session) {
+    logoutBtn.style.display = "block";
+  } else {
+    logoutBtn.style.display = "none";
+  }
+});
 <script/>
 </body>
 </html>
