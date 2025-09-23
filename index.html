@@ -6,6 +6,16 @@
   <title>MPJ Tracker</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <meta name="theme-color" content="#0b5f3b">
+<!-- Load Supabase library -->
+<script src="https://unpkg.com/@supabase/supabase-js"></script>
+
+<!-- Create Supabase client early (before any use) -->
+<script>
+  const SUPABASE_URL = "https://zpnruthpkmcnpxiztpf.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhc2U..."; /* "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  console.log("✅ Supabase client ready (head)");
+</script>
  <link rel="manifest" href="manifest.webmanifest">
   <style>
     :root{--brand:#0b5f3b;--accent:#f0b323;--bg:#f7faf9;--border:#e3e8e6;--muted:#eef3f1;--text:#0f172a;--sub:#64748b}
@@ -270,50 +280,28 @@ const calcRoomProgress = (room) => {
             </div>`).join('')}
           </div>
         </div>`}).join('');
+$$(".input[data-toggle]").forEach((cb) => {
+    cb.onchange = (e) => {
+      const tr = e.target.getAttribute("data-toggle");
+      const idx = r.tradeTasks[tr].findIndex(t => t.id === tr);
+      if (idx >= 0) {
+        r.tradeTasks[tr][idx].done = !!e.target.checked;
+        persistSoon();
+      }
+    };
+  });
 
-      $$('input[data-toggle]').forEach(cb=> cb.onchange = (e)=>{ const tr=e.target.getAttribute('data-toggle'); const id=e.target.getAttribute('data-id');
-        r.tradeTasks[tr] = r.tradeTasks[tr].map(t=> t.id===id? (t.done=!t.done, t) : t); persistSoon(); renderMain(); });
-      $$('button.btn[data-del]').forEach(b=> b.onclick = async ()=>{ const id=b.getAttribute('data-del'); const tr=b.getAttribute('data-trade'); const idx=+b.getAttribute('data-index');
-        const task = r.tradeTasks[tr].find(t=>t.id===id); const ph = task.photos[idx];
-        try { const path = (typeof ph==='string')? ph.split('/storage/v1/object/public/')[1] : ph.path; if(path) await supabase.storage.from(bucket).remove([path]); } catch(_e){}
-        task.photos.splice(idx,1); persistSoon(); drawRoom(r); });
-      $$('input[type=file][data-up]').forEach(inp=> inp.onchange = async (e)=>{ const taskId=inp.getAttribute('data-up'); const tr=inp.getAttribute('data-trade'); const task = r.tradeTasks[tr].find(t=>t.id===taskId);
-        const files=Array.from(e.target.files||[]);
-        for(const f of files){ const safe=f.name.replace(/[^a-z0-9\.\-]/gi,'_'); const path = `${pid}/${r.id}/${tr}/${taskId}/${Date.now()}-${safe}`;
-          const up = await supabase.storage.from(bucket).upload(path, f, { upsert:true, contentType:f.type||'image/jpeg' });
-          if(up.error){ alert('Upload failed: '+up.error.message); continue; }
-          const pu = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
-          (task.photos=task.photos||[]).push({url:pu, path});
-        }
-        persistSoon(); drawRoom(r);
-      });
-      $$('button[data-add]').forEach(b=> b.onclick = ()=>{ const tr=b.getAttribute('data-add'); const val=$('#add-'+tr+'-text').value.trim(); if(!val) return;
-        (r.tradeTasks[tr]=r.tradeTasks[tr]||[]).push({id:uuid(),title:val,done:false,photos:[]}); persistSoon(); drawRoom(r); });
+  function render() {
+    if (session) {
+      renderAuth();
+    } else {
+      ensureProject();
     }
+  }
 
-    supabase.auth.onAuthStateChange((_e,s)=>{ if(s) { $('#logout').style.display='inline-block'; } });
-    const initAuth = async()=>{ const { data } = await supabase.auth.getSession(); if(data.session) $('#logout').style.display='inline-block'; }; initAuth();
-
-    $('#project-name').oninput = (e)=>{ if(!project) return; project.name=e.target.value; persistSoon(); };
-    $('#project-address').oninput = (e)=>{ if(!project) return; project.address=e.target.value; persistSoon(); };
-
- function render() { 
-      if (session) renderAuth(); 
-      else ensureProject(); 
-    }
-
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js?v=4").catch(() => {});
-    }
-  
-<script src="https://unpkg.com/@supabase/supabase-js"></script>
-<script>
-  const SUPABASE_URL = "https://zpnruthpkmcnpxiztpf.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
-
-  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  console.log("✅ Supabase connected");
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js?v=4").catch(() => {});
+  }
 </script>
-
 </body>
 </html>
