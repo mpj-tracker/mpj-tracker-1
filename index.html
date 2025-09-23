@@ -97,12 +97,28 @@
       "Basement – Lobby","Basement – Gym","Basement – Wine room","Basement – Safe room","Basement – Treatment room 1","Basement – Treatment room 2","Basement – Steam room","Basement – Utility room","Basement – WC","Basement – Plant room","Basement – Bar","Basement – Cinema","Garage"
     ];
 
-    const uuid = () => crypto.randomUUID ? crypto.randomUUID() : (Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));
-    const ensureTaskShape = (t)=> (t && typeof t==='object') ? (t.photos||(t.photos=[]), t) : {id:uuid(), title:String(t||'Task'), done:false, photos:[]};
-    const emptyTradeTasks = (trades)=>{ const o={}; trades.forEach(t=>o[t]=(DEFAULT_TRADE_TEMPLATES[t]||["Scope","Complete"]).map(x=>ensureTaskShape({id:uuid(),title:x,done:false,photos:[]}}))); return o; };
-    const calcRoomProgress = (r)=>{ const all=Object.values(r.tradeTasks).flat(); const d=all.filter(t=>t.done).length; return all.length?Math.round(d*100/all.length):0; };
+   // Helpers
+const uid = () =>
+  (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
+    ? crypto.randomUUID()
+    : Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
 
-    let session=null; let project=null; let activeRoomId=null; let currentTab='tasks';
+const ensureTaskShape = (t = {}) => ({
+  id: t.id || uid(),
+  title: String(t.title || ""),
+  done: !!t.done,
+  photos: Array.isArray(t.photos) ? t.photos : [],
+  trade: t.trade || ""
+});
+
+const emptyTradeTasks = (trades = []) =>
+  trades.map(tr => ({ id: uid(), title: "", done: false, photos: [], trade: tr }));
+
+const calcRoomProgress = (room) => {
+  const tasks = Array.isArray(room.tradeTasks) ? room.tradeTasks : [];
+  const done = tasks.filter(t => t && t.done).length;
+  return tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+};
 
     supabase.auth.onAuthStateChange((_e,s)=>{ session=s; render(); });
     init(); async function init(){ const { data } = await supabase.auth.getSession(); session=data.session; render(); if(session) ensureProject(); }
@@ -298,6 +314,6 @@
   const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   console.log("✅ Supabase connected");
 </script>
-</script>
+
 </body>
 </html>
