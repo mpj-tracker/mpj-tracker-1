@@ -281,7 +281,7 @@
     $('#project-address').oninput = (e)=>{ if(!project) return; project.address=e.target.value; persistSoon(); };
 
     function render(){ if(!session) renderAuth(); else ensureProject(); }
-    if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+    if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js?v=4').catch(()=>{});
   </script>
   <script src="https://unpkg.com/@supabase/supabase-js"></script>
 <script>
