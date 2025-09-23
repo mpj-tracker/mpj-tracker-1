@@ -307,24 +307,27 @@ $$(".input[data-toggle]").forEach((cb) => {
     };
   });
 
-<!-- auth wiring (put this just above function render) -->
 <script>
+  // --- Auth wiring (place just above function render) ---
+
   // keep the current session
-  
   let session = null;
 
   // whenever auth state changes (sign in/out), re-render
   supabase.auth.onAuthStateChange((_event, s) => {
-    session = s?.session ?? s; // works for v1 and v2 payloads
+    // supports both v1 and v2 payload shapes
+    session = s?.session ?? s;
     render();
   });
 
-  // on page load, check if there is already a session, then render
+  // on first load, check if already signed in, then render
   (async () => {
     const { data } = await supabase.auth.getSession();
     session = data.session;
     render();
   })();
+</script>
+      
 
   function render() {
     if (session) {
