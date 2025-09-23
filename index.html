@@ -283,5 +283,14 @@
     function render(){ if(!session) renderAuth(); else ensureProject(); }
     if('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
   </script>
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+<script>
+  const SUPABASE_URL = "https://zpnqruthpkmcnpxiztpf.supabase.co";
+  const SUPABASE_ANON_KEY = eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4
+
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  console.log("✅ Supabase connected");
+</script>
 </body>
 </html>
