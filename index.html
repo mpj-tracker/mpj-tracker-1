@@ -13,146 +13,345 @@
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png" />
 
+  <!-- Supabase UMD (global) -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
   <style>
     :root{
-      --brand:#0b5f3b; --accent:#f0b323; --bg:#f7faf9; --border:#e5e7eb; --muted:#eef3f1;
-      --text:#111827;
+      --brand:#0b5f3b; --accent:#f0b323; --bg:#f7faf9; --border:#e3e8ee; --muted:#eef3f1; --text:#111827;
     }
     *{ box-sizing:border-box }
     html,body{ height:100% }
-    body{
-      margin:0; background:#fff; color:var(--text);
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Segoe UI Emoji","Segoe UI Symbol";
-    }
-    header{
-      position:sticky; top:0; z-index:10; background:#fff; border-bottom:3px solid var(--brand);
-    }
-    .bar{
-      max-width:1200px; margin:0 auto; display:flex; align-items:center; gap:.75rem;
-      padding:.75rem 1rem;
-    }
-    .logo{ display:flex; align-items:center; gap:.5rem; }
-    .logo img{ height:28px; border-radius:6px; background:#fff }
-    .brand{ font-weight:700; color:var(--brand) }
-    .status{ margin-left:auto; color:#6b7280; font-size:.9rem }
-    main{ max-width:1200px; margin:1.25rem auto; padding:0 1rem; }
+    body{ margin:0; background:var(--bg); color:var(--text); font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Segoe UI Emoji"; }
+    header{ position:sticky; top:0; background:#fff; border-bottom:3px solid var(--brand); z-index:10; }
+    .container{ max-width:1200px; margin:0 auto; padding:1rem; }
+    .bar{ display:flex; align-items:center; gap:.75rem; }
+    .logo img{ height:28px; border-radius:6px; background:#fff; }
+    .brand{ font-weight:700; color:#094d30 }
+    .status{ margin-left:auto; opacity:.7; font-size:.9rem }
 
-    /* Card */
-    .card{
-      border:1px solid var(--border); background:#fff; border-radius:12px; padding:18px;
-      box-shadow:0 1px 2px rgba(0,0,0,.03);
-    }
-    .card h2{ margin:0 0 .5rem 0 }
-    .muted{ color:#6b7280; font-size:.95rem }
+    .card{ border:1px solid var(--border); background:#fff; border-radius:12px; overflow:hidden; }
+    .card.head{ padding:1rem; border-bottom:1px solid var(--border); }
+    .card.body{ padding:1rem; }
 
-    /* Buttons */
-    .btn{
-      display:inline-flex; align-items:center; gap:.5rem;
-      padding:.6rem .9rem; border-radius:999px; background:var(--brand); color:#fff;
-      border:none; cursor:pointer;
-    }
-    .btn.secondary{ background:#fff; color:var(--brand); border:1px solid var(--brand) }
+    .btn{ border:2px solid var(--brand); background:var(--brand); color:#fff; padding:.55rem .9rem; border-radius:10px; cursor:pointer }
+    .btn.ghost{ background:transparent; color:var(--brand) }
+    .row{ display:flex; gap:.75rem; align-items:center; }
+    .chip{ display:inline-flex; align-items:center; gap:.5rem; background:#fff8e6; border:1px solid #fde6a6; border-radius:999px; padding:.35rem .6rem; font-size:.8rem }
+    input, textarea{ width:100%; border:1px solid var(--border); border-radius:10px; padding:.55rem .7rem; }
+    textarea{ min-height:70px; resize:vertical }
 
-    /* Hide sections depending on auth */
-    #app{ display:none }
+    .grid{ display:grid; gap:1rem }
+    @media(min-width:840px){ .grid.rooms{ grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    @media(min-width:1180px){ .grid.rooms{ grid-template-columns: repeat(3, minmax(0,1fr)); } }
+
+    .task{ display:flex; align-items:flex-start; gap:.6rem; padding:.5rem 0; border-bottom:1px dashed #eee; }
+    .task:last-child{ border-bottom:0 }
+    .task label{ flex:1 }
+    .thumbs{ display:grid; grid-template-columns: repeat(4, 1fr); gap:.4rem }
+    .thumbs img{ width:100%; height:70px; object-fit:cover; border-radius:6px; border:1px solid var(--border) }
+    .muted{ opacity:.7; font-size:.88rem }
   </style>
-
-  <!-- We will import modules via ESM inside a <script type="module"> below -->
 </head>
 <body>
   <header>
-    <div class="bar">
-      <div class="logo">
-        <img src="/mpj-logo.png" alt="MPJ" />
-        <span class="brand">MPJ Tracker</span>
-      </div>
+    <div class="container bar">
+      <div class="logo"><img src="/mpj-logo.png" alt="logo" /></div>
+      <span class="brand">MPJ Tracker</span>
       <span id="status" class="status">Signed out</span>
     </div>
   </header>
 
-  <main>
-    <!-- Auth (shown when logged OUT) -->
-    <div id="auth" class="card">
-      <h2>Login / Sign Up</h2>
-      <p class="muted">Use your email + password to sign in. New users can sign up on the same form.</p>
-      <!-- Supabase Auth UI will render here -->
+  <main class="container" style="padding:1rem">
+    <!-- AUTH BOX -->
+    <div id="auth-box" class="card" style="margin-bottom:1rem">
+      <div class="card.head">
+        <h2 style="margin:0">Login / Sign Up</h2>
+        <p class="muted" style="margin:.25rem 0 0 0">Use your email + password to sign in. New users can sign up on the same form.</p>
+      </div>
+      <div class="card.body">
+        <div class="row" style="flex-wrap:wrap; gap:.6rem">
+          <input id="email" type="email" placeholder="Enter your email" style="min-width:240px" />
+          <input id="password" type="password" placeholder="Enter your password" style="min-width:200px" />
+          <button id="signup-btn" class="btn">Sign Up</button>
+          <button id="login-btn" class="btn ghost">Log In</button>
+          <button id="logout-btn" class="btn" style="display:none">Log Out</button>
+        </div>
+      </div>
     </div>
 
-    <!-- App (shown when logged IN) -->
-    <div id="app" class="card">
-      <h2>Welcome 👋</h2>
-      <p class="muted">You’re signed in. Replace this block with your app UI.</p>
-      <button id="logout" class="btn">Log out</button>
+    <!-- APP UI (hidden until logged in) -->
+    <div id="app" style="display:none">
+      <!-- project set-up -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="card.head"><h3 style="margin:0">Project</h3></div>
+        <div class="card.body">
+          <div class="row" style="flex-wrap:wrap">
+            <input id="project-name" placeholder="Project name" style="min-width:260px" />
+            <input id="project-address" placeholder="Site address (optional)" style="flex:1; min-width:260px" />
+            <button id="ensure-project" class="btn">Use / Create Project</button>
+            <span id="sync" class="chip">Connecting…</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- rooms + tasks -->
+      <div id="rooms" class="grid rooms"></div>
     </div>
   </main>
 
-  <script type="module">
-    // Import Supabase + the Web Auth UI (CORS-safe via ESM)
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-    import { Auth } from 'https://esm.sh/@supabase/auth-ui-web@0.5.8'
+  <!-- ========= APP SCRIPT (no HTML comments inside) ========= -->
+  <script>
+  (function(){
+    // 1) Supabase client
+    const SUPABASE_URL = 'https://zpnqruthpknncpiiztxf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4';
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // 1) SET YOUR KEYS HERE
-    const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co"
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4"
+    // 2) DOM refs
+    const authBox = document.getElementById('auth-box');
+    const statusEl = document.getElementById('status');
+    const appEl = document.getElementById('app');
+    const roomsEl = document.getElementById('rooms');
 
-    // 2) Create the client
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const signupBtn = document.getElementById('signup-btn');
+    const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
 
-    // 3) Grab DOM elements we toggle
-    const authBox = document.getElementById('auth')
-    const appBox = document.getElementById('app')
-    const statusEl = document.getElementById('status')
-    const logoutBtn = document.getElementById('logout')
+    const projectNameInput = document.getElementById('project-name');
+    const projectAddrInput = document.getElementById('project-address');
+    const ensureProjectBtn = document.getElementById('ensure-project');
+    const syncBadge = document.getElementById('sync');
 
-    // 4) Mount the Auth UI (email/password)
-    Auth({
-      supabaseClient: supabase,
-      target: '#auth', // you can also pass the DOM element: authBox
-      providers: ['email'], // email/password
-      appearance: { theme: 'default' } // clean default theme
-    })
+    // 3) Session state
+    let session = null;
+    let project = null; // { id, name, address }
 
-    // 5) Keep the current session in memory and render UI accordingly
-    let session = null
+    function setSync(text){ syncBadge.textContent = text; }
+    function setStatus(text){ statusEl.textContent = text; }
 
-    function render() {
-      const signedIn = !!session
-      if (signedIn) {
-        if (authBox) authBox.style.display = 'none'
-        if (appBox) appBox.style.display = 'block'
-        if (statusEl) statusEl.textContent = 'Signed in'
+    // 4) Auth handlers
+    signupBtn.addEventListener('click', async () => {
+      const email = (emailInput.value || '').trim();
+      const password = passwordInput.value || '';
+      if (!email || !password) return alert('Please enter email and password');
+      const { error } = await sb.auth.signUp({ email, password });
+      if (error) return alert('Sign up failed: ' + error.message);
+      alert('Sign up successful. If email confirmations are ON, please confirm via the email sent to you.');
+    });
+
+    loginBtn.addEventListener('click', async () => {
+      const email = (emailInput.value || '').trim();
+      const password = passwordInput.value || '';
+      if (!email || !password) return alert('Please enter email and password');
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) return alert('Login failed: ' + error.message);
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      const { error } = await sb.auth.signOut();
+      if (error) return alert('Logout failed: ' + error.message);
+    });
+
+    // 5) Auth state re-render
+    sb.auth.onAuthStateChange((_event, s) => {
+      session = s?.session ?? s ?? null;
+      render();
+    });
+
+    // 6) On first load
+    (async () => {
+      const { data } = await sb.auth.getSession();
+      session = data.session;
+      render();
+    })();
+
+    // 7) Render: toggle UI
+    function render(){
+      const signedIn = !!session;
+      setStatus(signedIn ? 'Signed in' : 'Signed out');
+      authBox.style.display = signedIn ? 'none' : 'block';
+      appEl.style.display = signedIn ? 'block' : 'none';
+      if (signedIn){
+        logoutBtn.style.display = 'inline-flex';
       } else {
-        if (authBox) authBox.style.display = 'block'
-        if (appBox) appBox.style.display = 'none'
-        if (statusEl) statusEl.textContent = 'Signed out'
+        logoutBtn.style.display = 'none';
       }
     }
 
-    // 6) React to auth changes
-    supabase.auth.onAuthStateChange((_event, s) => {
-      session = s?.session ?? s ?? null // works for v1/v2 event payloads
-      render()
-    })
+    // 8) Ensure project (create if missing; requires SQL schema already created)
+    ensureProjectBtn.addEventListener('click', async () => {
+      const name = (projectNameInput.value || '').trim();
+      const address = (projectAddrInput.value || '').trim();
+      if (!name) return alert('Enter a project name');
+      setSync('Checking project…');
 
-    // 7) On first load, check if already signed in
-    ;(async () => {
-      const { data } = await supabase.auth.getSession()
-      session = data.session
-      render()
-    })()
+      // Try to find by name (per-user visibility policy should scope to current user)
+      let { data: existing, error: findErr } = await sb
+        .from('projects')
+        .select('*')
+        .eq('name', name)
+        .limit(1)
+        .maybeSingle();
 
-    // 8) Logout button
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', async () => {
-        const { error } = await supabase.auth.signOut()
-        if (error) alert('Logout error: ' + error.message)
-      })
+      if (findErr) { setSync('Error'); return alert('Find project error: ' + findErr.message); }
+
+      if (!existing){
+        const { data: created, error: insErr } = await sb
+          .from('projects')
+          .insert([{ name, address }])
+          .select('*')
+          .single();
+        if (insErr) { setSync('Error'); return alert('Create project error: ' + insErr.message); }
+        project = created;
+      } else {
+        // Optionally keep address up to date
+        if (address && address !== existing.address){
+          const { data: upd, error: updErr } = await sb
+            .from('projects')
+            .update({ address })
+            .eq('id', existing.id)
+            .select('*')
+            .single();
+          if (!updErr) existing = upd;
+        }
+        project = existing;
+      }
+
+      setSync('Loading rooms…');
+      await loadRoomsAndTasks();
+      setSync('Ready');
+    });
+
+    // 9) Load rooms and tasks for the selected project and render the grid
+    async function loadRoomsAndTasks(){
+      roomsEl.innerHTML = '';
+      if (!project) return;
+
+      const { data: rooms, error: roomsErr } = await sb
+        .from('rooms')
+        .select('*')
+        .eq('project_id', project.id)
+        .order('sort', { ascending:true });
+
+      if (roomsErr) return alert('Rooms error: ' + roomsErr.message);
+
+      // Fetch all tasks for these rooms in one go
+      const roomIds = rooms.map(r => r.id);
+      let tasksByRoom = {};
+      if (roomIds.length){
+        const { data: tasks, error: tasksErr } = await sb
+          .from('tasks')
+          .select('*')
+          .in('room_id', roomIds)
+          .order('id', { ascending:true });
+
+        if (tasksErr) return alert('Tasks error: ' + tasksErr.message);
+        for (const t of tasks){
+          (tasksByRoom[t.room_id] ||= []).push(t);
+        }
+      }
+
+      // Render
+      const frag = document.createDocumentFragment();
+      for (const r of rooms){
+        const card = document.createElement('div');
+        card.className = 'card';
+
+        const head = document.createElement('div');
+        head.className = 'card.head';
+        head.innerHTML = `<div class="row" style="justify-content:space-between; align-items:center">
+          <div>
+            <div style="font-weight:700">${r.floor_name || ''}</div>
+            <div style="font-size:1.1rem">${r.room_name}</div>
+          </div>
+          <div class="chip" id="badge-${r.id}">0%</div>
+        </div>`;
+        card.appendChild(head);
+
+        const body = document.createElement('div');
+        body.className = 'card.body';
+
+        const ts = (tasksByRoom[r.id] || [])
+          .sort((a,b) => (a.id > b.id ? 1 : -1));
+
+        // progress
+        const done = ts.filter(t => t.done).length;
+        const pct = ts.length ? Math.round((done/ts.length)*100) : 0;
+        head.querySelector(`#badge-${r.id}`).textContent = pct + '%';
+
+        // list tasks
+        for (const t of ts){
+          const row = document.createElement('div'); row.className = 'task';
+
+          const cb = document.createElement('input');
+          cb.type = 'checkbox'; cb.checked = !!t.done; cb.style.marginTop = '.25rem';
+          cb.addEventListener('change', async () => {
+            await sb.from('tasks').update({ done: cb.checked }).eq('id', t.id);
+          });
+          row.appendChild(cb);
+
+          const label = document.createElement('label');
+          label.innerHTML = `<div style="font-weight:600">${t.description}</div>`;
+          row.appendChild(label);
+
+          body.appendChild(row);
+
+          // notes
+          const notes = document.createElement('textarea');
+          notes.placeholder = 'Notes for this task…';
+          notes.value = t.notes || '';
+          notes.addEventListener('change', async () => {
+            await sb.from('tasks').update({ notes: notes.value }).eq('id', t.id);
+          });
+          body.appendChild(notes);
+
+          // photos
+          const up = document.createElement('input');
+          up.type = 'file'; up.accept = 'image/*'; up.capture = 'environment';
+          up.addEventListener('change', async () => {
+            if (!up.files || !up.files[0]) return;
+            const file = up.files[0];
+            const ts = Date.now();
+            const path = `${project.id}/${r.id}/${t.id}/${ts}-${file.name}`.replace(/\s+/g,'_');
+            const { error } = await sb.storage.from('photos').upload(path, file, { upsert:false });
+            if (error) return alert('Upload error: ' + error.message);
+
+            // persist photo path into task.photos (jsonb array)
+            const current = Array.isArray(t.photos) ? t.photos.slice() : [];
+            current.push({ path, ts });
+            const { data, error: upErr } = await sb.from('tasks').update({ photos: current }).eq('id', t.id).select('photos').single();
+            if (!upErr) {
+              t.photos = data.photos;
+              await refreshThumbs();
+            }
+          });
+          body.appendChild(up);
+
+          const thumbs = document.createElement('div'); thumbs.className = 'thumbs';
+          body.appendChild(thumbs);
+
+          async function refreshThumbs(){
+            thumbs.innerHTML = '';
+            const list = Array.isArray(t.photos) ? t.photos : [];
+            for (const p of list){
+              const { data } = sb.storage.from('photos').getPublicUrl(p.path);
+              const img = document.createElement('img'); img.src = data.publicUrl;
+              thumbs.appendChild(img);
+            }
+          }
+          refreshThumbs();
+        }
+
+        card.appendChild(body);
+        frag.appendChild(card);
+      }
+
+      roomsEl.appendChild(frag);
     }
-
-    // 9) Optional: register your service worker for PWA/offline (if sw.js exists)
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=4').catch(() => {})
-    }
+  })();
   </script>
 </body>
 </html>
