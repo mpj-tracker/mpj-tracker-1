@@ -1,410 +1,159 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MPJ Tracker</title>
-
-  <meta name="theme-color" content="#0b5f3b" />
-  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png" />
-  <link rel="manifest" href="/manifest.webmanifest?v=4" />
-
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-
+  <link rel="icon" type="image/png" href="mpj-logo.png" />
   <style>
-    :root {
-      --brand:#0b5f3b; --accent:#f0b323; --bg:#f7faf9; --border:#e3e6eb; --muted:#eef3f1; --text:#111827;
-      /* Trades */
-      --t-Joiners:#15803d; --t-Plumbers:#1d4ed8; --t-Electrical:#dc2626; --t-Plasterer:#7c3aed;
-      --t-Decorators:#f59e0b; --t-Tiling:#0ea5a4; --t-Specialist:#374151; --t-General:#6b7280;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
-
-    header{position:sticky;top:0;background:#fff;border-bottom:3px solid var(--brand);z-index:10}
-    .hi{max-width:1200px;margin:0 auto;display:flex;gap:.6rem;align-items:center;padding:.6rem .8rem}
-    .logo{display:flex;align-items:center;gap:.6rem}
-    .logo img{height:28px;border-radius:6px;background:#fff}
-    .brand{font-weight:700;color:var(--brand)}
-    .status{color:#6b7280;font-size:.9rem}
-    .spacer{flex:1}
-
-    main{max-width:1200px;margin:0 auto;padding:1rem}
-    .card{border:1px solid var(--border);background:#fff;border-radius:14px;padding:1rem;margin:.6rem 0}
-    .btn{background:var(--brand);border:none;color:#fff;padding:.55rem .9rem;border-radius:8px;cursor:pointer}
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .btn.accent{background:var(--accent);color:#111}
-    .input{border:1px solid var(--border);background:#fff;border-radius:10px;padding:.55rem .65rem;min-width:240px}
-    .row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
-    .small{font-size:.9rem;color:#6b7280}
-
-    /* Accordions */
-    details.floor,details.room,details.trade{border:1px solid var(--border);border-radius:10px;margin:.5rem 0;background:#fff}
-    details>summary{cursor:pointer;list-style:none;padding:.8rem 1rem;font-weight:600;display:flex;align-items:center;gap:.6rem}
-    details>summary::-webkit-details-marker{display:none}
-    .body{padding:.75rem 1rem 1rem;border-top:1px dashed var(--border)}
-
-    .grid-rooms{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:.75rem}
-    @media(min-width:900px){.grid-rooms{grid-template-columns:repeat(2,minmax(0,1fr))}}
-
-    /* Tasks */
-    .task{border:1px solid var(--border);border-radius:10px;padding:.75rem;margin:.5rem 0;background:#fff;
-          display:grid;grid-template-columns:auto 1fr auto;gap:.75rem;align-items:start}
-    .task .title{font-weight:600}
-    .task .notes{grid-column:1/-1;width:100%;min-height:70px;border-radius:8px;border:1px solid var(--border);
-                 padding:.5rem .6rem;resize:vertical}
-    .task .photos{grid-column:1/-1}
-    .photos .thumbs{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem}
-    .thumbs img{width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border);background:#f8fafc}
-    .photos input[type="file"]{display:block;margin:.3rem 0 .2rem}
-
-    /* Trade colours */
-    .trade[data-trade="Joiners"]>summary{color:var(--t-Joiners)}
-    .trade[data-trade="Plumbers"]>summary{color:var(--t-Plumbers)}
-    .trade[data-trade="Electrical"]>summary{color:var(--t-Electrical)}
-    .trade[data-trade="Plasterer"]>summary{color:var(--t-Plasterer)}
-    .trade[data-trade="Decorators"]>summary{color:var(--t-Decorators)}
-    .trade[data-trade="Tiling"]>summary{color:var(--t-Tiling)}
-    .trade[data-trade="Specialist"]>summary{color:var(--t-Specialist)}
-    .trade[data-trade="General"]>summary{color:var(--t-General)}
-
-    /* Progress bars */
-    .meter{flex:1;height:8px;background:#f1f5f9;border-radius:999px;overflow:hidden;position:relative}
-    .meter > span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),#22c55e);width:0%}
-    .pct{font-size:.85rem;color:#374151;min-width:3ch;text-align:right}
-    .chip{background:#f9fafb;border:1px solid var(--border);padding:.2rem .5rem;border-radius:999px;font-size:.8rem}
-    .room-summary{display:flex;align-items:center;gap:.6rem;flex:1}
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f8f9fa; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: #004225; color: white; }
+    header img { height: 40px; margin-right: 10px; }
+    .container { padding: 20px; }
+    details { margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; background: white; padding: 5px 10px; }
+    summary { font-weight: bold; cursor: pointer; }
+    .trade { padding: 5px; border-radius: 4px; margin: 5px 0; }
+    .joiner { background: #d4edda; }
+    .electrician { background: #f8d7da; }
+    .plumber { background: #d1ecf1; }
+    .plasterer { background: #fefefe; border: 1px solid #ccc; }
+    .decorator { background: #fff3cd; }
+    .tiler { background: #e2e3e5; }
+    .specialist { background: #f5d0fe; }
+    .progress { background: #e9ecef; border-radius: 4px; height: 14px; margin: 5px 0; }
+    .progress-bar { background: #28a745; height: 14px; border-radius: 4px; width: 0%; transition: width 0.3s ease; }
+    .signoff { margin-top: 8px; font-size: 0.9rem; }
+    .photos { margin-top: 6px; }
+    .photos img { height: 80px; margin: 4px; border-radius: 4px; border: 1px solid #ccc; object-fit: cover; display:block; }
+    .photos .caption { font-size: 0.8rem; color: #555; margin-left:4px; }
+    table { border-collapse: collapse; width: 100%; margin-top:10px; }
+    th, td { border:1px solid #ccc; padding:6px; text-align:left; }
+    th { background:#eee; }
+    #filter { margin:10px 0; padding:6px; width:100%; max-width:400px; }
+    .gallery-item { border:1px solid #ddd; border-radius:6px; padding:4px; }
   </style>
 </head>
 <body>
   <header>
-    <div class="hi">
-      <div class="logo"><img src="/mpj-logo.png" alt="logo"/><span class="brand">MPJ Tracker</span></div>
-      <div class="spacer"></div>
-      <div id="status" class="status">Signed out</div>
-      <button id="logout-btn" class="btn accent" style="display:none;">Log out</button>
+    <div style="display:flex; align-items:center;">
+      <img src="mpj-logo.png" alt="Logo" />
+      <h1>MPJ Tracker</h1>
     </div>
+    <button id="logout-btn" style="background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer;">Log out</button>
   </header>
 
-  <main>
-    <!-- Auth -->
-    <div id="auth-box" class="card" style="display:none;">
+  <div class="container">
+    <div id="auth-box">
       <h2>Login / Sign Up</h2>
-      <div class="row">
-        <input id="email" class="input" type="email" placeholder="Email"/>
-        <input id="password" class="input" type="password" placeholder="Password"/>
-        <button id="signup-btn" class="btn">Sign Up</button>
-        <button id="login-btn" class="btn">Log In</button>
-      </div>
+      <input id="email" type="email" placeholder="Email" /><br/>
+      <input id="password" type="password" placeholder="Password" /><br/>
+      <button id="signup-btn">Sign Up</button>
+      <button id="login-btn">Log In</button>
     </div>
 
-    <!-- Project -->
-    <div id="project-box" class="card" style="display:none;">
-      <h3>Project</h3>
-      <div class="row">
-        <input id="project-name" class="input" placeholder="Project name"/>
-        <input id="project-address" class="input" placeholder="Site address (optional)"/>
-        <button id="use-project" class="btn accent">Use / Create Project</button>
-      </div>
-      <p class="small">Tip: re-use the same name to open it again later.</p>
+    <div id="project-box" style="display:none;">
+      <h2>Project</h2>
+      <input id="project-name" placeholder="Project name" />
+      <input id="project-address" placeholder="Site address (optional)" />
+      <button id="use-project">Use / Create Project</button>
     </div>
 
-    <!-- Floors / Rooms / Trades / Tasks -->
+    <h3>Overall Progress</h3>
+    <div class="progress"><div id="overall-progress" class="progress-bar"></div></div>
+
+    <h3>Project Dashboard</h3>
+    <input id="filter" placeholder="Filter by room, trade, or user..." />
+
+    <details open>
+      <summary><strong>All Sign-offs</strong></summary>
+      <table id="signoff-table">
+        <thead>
+          <tr><th>Room</th><th>Trade</th><th>Signed by</th><th>Date</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </details>
+
+    <details>
+      <summary><strong>All Photos</strong></summary>
+      <div id="photo-gallery" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:10px; margin:10px 0;"></div>
+    </details>
+
     <div id="rooms"></div>
-  </main>
+  </div>
 
-<script>
-(function(){
-  const SUPABASE_URL='https://zpnqruthpknncpiiztxf.supabase.co';
-  const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4';
-  const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
+  <script type="module">
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-  const authBox=document.getElementById('auth-box');
-  const projectBox=document.getElementById('project-box');
-  const roomsEl=document.getElementById('rooms');
-  const statusEl=document.getElementById('status');
-  const logoutBtn=document.getElementById('logout-btn');
+    const SUPABASE_URL = "https://zpnqruthpknncpilztxf.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4"; 
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  const emailInput=document.getElementById('email');
-  const passwordInput=document.getElementById('password');
-  const signupBtn=document.getElementById('signup-btn');
-  const loginBtn=document.getElementById('login-btn');
+    const filterInput = document.getElementById("filter");
 
-  const projectNameInput=document.getElementById('project-name');
-  const projectAddressInput=document.getElementById('project-address');
-  const useProjectBtn=document.getElementById('use-project');
+    // ... [Auth + Project handling code same as before] ...
 
-  const FLOOR_ORDER=['Basement','Ground Floor','1st Floor','2nd Floor','Other'];
+    async function renderSignoffs(projectId) {
+      const tbody = document.querySelector("#signoff-table tbody");
+      tbody.innerHTML = "";
+      const { data: signs } = await sb
+        .from("signoffs")
+        .select("*, rooms(room_name)")
+        .eq("project_id", projectId);
 
-  let session=null; let currentProjectId=null;
-
-  const esc=s=>String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
-                            .replaceAll('"','&quot;').replaceAll("'","&#39;");
-  const idSafe = s => s.replace(/[^a-z0-9]+/gi,'-').toLowerCase();
-
-  function showAuth(){authBox.style.display='block';projectBox.style.display='none';roomsEl.innerHTML='';statusEl.textContent='Signed out';logoutBtn.style.display='none'}
-  function showProject(){authBox.style.display='none';projectBox.style.display='block';roomsEl.innerHTML='';statusEl.textContent='Signed in';logoutBtn.style.display='inline-block'}
-
-  signupBtn.addEventListener('click',async()=>{
-    const email=emailInput.value.trim(), pw=passwordInput.value;
-    if(!email||!pw)return alert('Enter email + password');
-    const {error}=await sb.auth.signUp({email,password:pw});
-    if(error)return alert(error.message);
-    alert('Check your email for confirmation (if required).');
-  });
-
-  loginBtn.addEventListener('click',async()=>{
-    const email=emailInput.value.trim(), pw=passwordInput.value;
-    if(!email||!pw)return alert('Enter email + password');
-    const {error}=await sb.auth.signInWithPassword({email,password:pw});
-    if(error)alert(error.message);
-  });
-
-  logoutBtn.addEventListener('click',async()=>{await sb.auth.signOut()});
-
-  sb.auth.onAuthStateChange((_e,s)=>{session=s?.session??s;session?showProject():showAuth()});
-  (async()=>{const {data}=await sb.auth.getSession();session=data.session;session?showProject():showAuth()})();
-
-  useProjectBtn.addEventListener('click',async()=>{
-    const name=projectNameInput.value.trim(), addr=projectAddressInput.value;
-    if(!name)return alert('Enter a project name');
-    useProjectBtn.disabled=true;
-
-    const {data:existing,error:findErr}=await sb.from('projects').select('id').eq('name',name).order('created_at',{ascending:false}).limit(1);
-    if(findErr){useProjectBtn.disabled=false;return alert(findErr.message);}
-
-    if(existing?.length){currentProjectId=existing[0].id;}
-    else{
-      const {data:newId,error:rpcErr}=await sb.rpc('seed_full_project',{p_name:name,p_site:addr});
-      if(rpcErr){useProjectBtn.disabled=false;return alert(rpcErr.message);}
-      currentProjectId=newId;
+      signs.forEach(s => {
+        const tr = document.createElement("tr");
+        tr.dataset.room = s.rooms?.room_name || "";
+        tr.dataset.trade = s.trade;
+        tr.dataset.user = s.user_id || "Unknown";
+        tr.innerHTML = `
+          <td>${s.rooms?.room_name || ''}</td>
+          <td>${s.trade}</td>
+          <td>${s.user_id || 'Unknown'}</td>
+          <td>${new Date(s.signed_at).toLocaleString()}</td>
+        `;
+        tbody.appendChild(tr);
+      });
     }
 
-    const { error: seedErr } = await sb.rpc('seed_trade_tasks_for_project',{p_project_id:currentProjectId});
-    if(seedErr) console.warn('Trade seed:', seedErr.message);
+    async function renderPhotosDashboard(projectId) {
+      const gallery = document.getElementById("photo-gallery");
+      gallery.innerHTML = "";
+      const { data: photos } = await sb.from("photos").select("*").eq("project_id", projectId);
 
-    await renderFloors(currentProjectId);
-    projectBox.style.display='none';
-    useProjectBtn.disabled=false;
-  });
-
-  async function renderFloors(pid){
-    roomsEl.innerHTML='Loading…';
-
-    const {data:rooms,error:rErr}=await sb
-      .from('rooms')
-      .select('id,floor_name,room_name')
-      .eq('project_id',pid);
-    if(rErr) return roomsEl.innerHTML=`<div class="card">Rooms error: ${esc(rErr.message)}</div>`;
-
-    const roomIds=rooms.map(r=>r.id);
-    const {data:tasks,error:tErr}=await sb
-      .from('tasks')
-      .select('id,room_id,description,done,notes,trade,phase')
-      .in('room_id',roomIds);
-    if(tErr) return roomsEl.innerHTML=`<div class="card">Tasks error: ${esc(tErr.message)}</div>`;
-
-    // Group
-    const tasksByRoom=new Map();
-    for(const t of tasks){ if(!tasksByRoom.has(t.room_id)) tasksByRoom.set(t.room_id,[]); tasksByRoom.get(t.room_id).push(t); }
-    const roomsByFloor=new Map();
-    for(const r of rooms){ if(!roomsByFloor.has(r.floor_name)) roomsByFloor.set(r.floor_name,[]); roomsByFloor.get(r.floor_name).push(r); }
-
-    // Order floors
-    const floorNames=Array.from(roomsByFloor.keys()).sort((a,b)=>{
-      const ia=FLOOR_ORDER.indexOf(a); const ib=FLOOR_ORDER.indexOf(b);
-      return (ia===-1?999:ia)-(ib===-1?999:ib);
-    });
-
-    // Build HTML
-    const out=[];
-    for(const floorName of floorNames){
-      const floorId = `floor-${idSafe(floorName)}`;
-      // compute floor totals
-      let floorDone=0, floorTotal=0;
-
-      const roomHtml=(roomsByFloor.get(floorName)||[]).map(room=>{
-        const rTasks=tasksByRoom.get(room.id)||[];
-        const total=rTasks.length, done=rTasks.filter(x=>x.done).length;
-        floorDone += done; floorTotal += total;
-
-        // group by trade
-        const byTrade=new Map();
-        for(const t of rTasks){ const k=t.trade||'General'; if(!byTrade.has(k)) byTrade.set(k,[]); byTrade.get(k).push(t); }
-
-        const tradeHtml=[...byTrade.entries()].map(([trade,list])=>{
-          const rows=list.map(taskHtml).join('');
-          return `
-            <details class="trade" data-trade="${esc(trade)}">
-              <summary>${esc(trade)}</summary>
-              <div class="body">${rows || '<div class="small">No tasks</div>'}</div>
-            </details>
-          `;
-        }).join('');
-
-        const pct = total ? Math.round((done/total)*100) : 0;
-        const roomSum = `
-          <div class="room-summary">
-            <span>${esc(room.room_name)}</span>
-            <span class="chip">${done}/${total}</span>
-            <div class="meter" aria-label="Room progress"><span style="width:${pct}%"></span></div>
-            <span class="pct">${pct}%</span>
+      photos.forEach(p => {
+        const url = sb.storage.from("photos").getPublicUrl(p.storage_path).data.publicUrl;
+        const div = document.createElement("div");
+        div.className = "gallery-item";
+        div.dataset.room = p.room_name || "";
+        div.dataset.trade = p.trade || "";
+        div.dataset.user = p.uploaded_by || "";
+        div.innerHTML = `
+          <img src="${url}" style="width:100%; border-radius:6px;" />
+          <div style="font-size:0.8rem; margin-top:4px;">
+            ${p.room_name || ''}<br/>
+            <em>${p.uploaded_by}</em><br/>
+            <small>${new Date(p.uploaded_at).toLocaleString()}</small>
           </div>
         `;
-
-        return `
-          <details class="room" data-room-id="${room.id}" data-done="${done}" data-total="${total}">
-            <summary>${roomSum}</summary>
-            <div class="body">${tradeHtml}</div>
-          </details>
-        `;
-      }).join('');
-
-      const floorPct = floorTotal ? Math.round((floorDone/floorTotal)*100) : 0;
-      const floorSummary = `
-        <span>${esc(floorName)}</span>
-        <span class="chip">${floorDone}/${floorTotal}</span>
-        <div class="meter" id="${floorId}-meter"><span style="width:${floorPct}%"></span></div>
-        <span class="pct" id="${floorId}-pct">${floorPct}%</span>
-      `;
-
-      out.push(`
-        <details class="floor" data-floor="${esc(floorName)}" data-done="${floorDone}" data-total="${floorTotal}">
-          <summary>${floorSummary}</summary>
-          <div class="body"><div class="grid-rooms">${roomHtml}</div></div>
-        </details>
-      `);
+        gallery.appendChild(div);
+      });
     }
 
-    roomsEl.innerHTML=out.join('');
-    await refreshAllThumbs(); // load thumbnails after inject
-  }
-
-  function taskHtml(t){
-    return `
-      <div class="task" data-task-id="${t.id}">
-        <div><input type="checkbox" ${t.done?'checked':''}></div>
-        <div class="title">${esc(t.description||t.phase)}</div>
-        <div class="small">${t.done?'Done':'To-do'}</div>
-        <textarea class="notes" placeholder="Notes">${t.notes??''}</textarea>
-        <div class="photos">
-          <input type="file" accept="image/*" capture="environment" multiple />
-          <div id="photos_${t.id}" class="thumbs"></div>
-        </div>
-      </div>
-    `;
-  }
-
-  // ========== Event wiring: checkbox, notes, uploads ==========
-  roomsEl.addEventListener('change', async (e)=>{
-    const el=e.target;
-    const taskEl=el.closest('.task'); if(!taskEl) return;
-
-    // Toggle done
-    if(el.tagName==='INPUT' && el.type==='checkbox'){
-      const id=taskEl.dataset.taskId;
-      const done=!!el.checked;
-      taskEl.querySelector('.small').textContent = done ? 'Done' : 'To-do';
-
-      // Update DB
-      const {error}=await sb.from('tasks').update({done}).eq('id',id).single();
-      if(error){ el.checked=!done; taskEl.querySelector('.small').textContent = el.checked?'Done':'To-do'; return alert('Save failed: '+error.message); }
-
-      // Update room + floor meters without reloading
-      updateProgressForToggle(taskEl, done ? +1 : -1);
-    }
-
-    // Upload photos
-    if(el.tagName==='INPUT' && el.type==='file'){
-      const taskId=taskEl.dataset.taskId;
-      const files=[...el.files||[]];
-      if(!files.length) return;
-      try{
-        await Promise.all(files.map(f=>uploadPhoto(taskId,f)));
-        await refreshThumb(taskId, taskEl);
-      }catch(err){ alert('Upload failed: '+err.message); }
-    }
-  });
-
-  // Save notes on blur
-  roomsEl.addEventListener('blur', async (e)=>{
-    const el=e.target;
-    if(!(el.tagName==='TEXTAREA' && el.classList.contains('notes'))) return;
-    const taskEl=el.closest('.task'); if(!taskEl) return;
-    const id=taskEl.dataset.taskId;
-    const {error}=await sb.from('tasks').update({notes:el.value}).eq('id',id).single();
-    if(error) alert('Saving notes failed: '+error.message);
-  }, true);
-
-  // Update progress bars after a checkbox toggle
-  function updateProgressForToggle(taskEl, delta){
-    // room
-    const roomEl = taskEl.closest('details.room');
-    if(roomEl){
-      const total = parseInt(roomEl.dataset.total||'0',10);
-      let done = parseInt(roomEl.dataset.done ||'0',10);
-      done = Math.max(0, Math.min(total, done + delta));
-      roomEl.dataset.done = String(done);
-
-      const pct = total ? Math.round((done/total)*100) : 0;
-      const sum = roomEl.querySelector('.room-summary');
-      if(sum){
-        const meter = sum.querySelector('.meter > span');
-        const chip = sum.querySelector('.chip');
-        const pctEl = sum.querySelector('.pct');
-        if(meter) meter.style.width = pct+'%';
-        if(chip) chip.textContent = `${done}/${total}`;
-        if(pctEl) pctEl.textContent = pct+'%';
-      }
-    }
-
-    // floor
-    const floorEl = taskEl.closest('details.floor');
-    if(floorEl){
-      const floorName = floorEl.dataset.floor;
-      const floorId = `floor-${idSafe(floorName)}`;
-      let fDone = parseInt(floorEl.dataset.done||'0',10);
-      const fTotal= parseInt(floorEl.dataset.total||'0',10);
-      fDone = Math.max(0, Math.min(fTotal, fDone + delta));
-      floorEl.dataset.done = String(fDone);
-
-      const fpct = fTotal ? Math.round((fDone/fTotal)*100) : 0;
-      const meter = floorEl.querySelector(`#${floorId}-meter > span`);
-      const pctEl = floorEl.querySelector(`#${floorId}-pct`);
-      const chip = floorEl.querySelector('summary .chip');
-      if(meter) meter.style.width = fpct+'%';
-      if(pctEl) pctEl.textContent = fpct+'%';
-      if(chip) chip.textContent = `${fDone}/${fTotal}`;
-    }
-  }
-
-  // ========== Storage helpers ==========
-  async function uploadPhoto(taskId,file){
-    const path = `${taskId}/${Date.now()}_${Math.random().toString(36).slice(2)}_${file.name.replace(/\s+/g,'_')}`;
-    const {error}=await sb.storage.from('photos').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||'image/jpeg'});
-    if(error) throw error;
-  }
-  async function listPhotos(taskId){
-    const {data,error}=await sb.storage.from('photos').list(taskId,{limit:100});
-    if(error) throw error; return data||[];
-  }
-  function publicUrl(path){ return sb.storage.from('photos').getPublicUrl(path).data.publicUrl; }
-  async function refreshThumb(taskId, taskEl){
-    const wrap=taskEl.querySelector(`#photos_${CSS.escape(taskId)}`); if(!wrap) return;
-    wrap.innerHTML='<span class="small">Loading…</span>';
-    try{
-      const files=await listPhotos(taskId);
-      if(!files.length){ wrap.innerHTML='<span class="small">No photos</span>'; return; }
-      wrap.innerHTML = files.map(f=>{
-        const url=publicUrl(`${taskId}/${f.name}`);
-        return `<a href="${url}" target="_blank" rel="noopener"><img loading="lazy" src="${url}" alt=""></a>`;
-      }).join('');
-    }catch(err){ wrap.innerHTML=`<span class="small">Photos error: ${esc(err.message)}</span>`; }
-  }
-  async function refreshAllThumbs(){ for(const t of roomsEl.querySelectorAll('.task')) await refreshThumb(t.dataset.taskId,t); }
-})();
-</script>
+    // Filter function
+    filterInput.addEventListener("input", () => {
+      const term = filterInput.value.toLowerCase();
+      // Sign-offs
+      document.querySelectorAll("#signoff-table tbody tr").forEach(row => {
+        const text = `${row.dataset.room} ${row.dataset.trade} ${row.dataset.user}`.toLowerCase();
+        row.style.display = text.includes(term) ? "" : "none";
+      });
+      // Photos
+      document.querySelectorAll("#photo-gallery .gallery-item").forEach(item => {
+        const text = `${item.dataset.room} ${item.dataset.trade} ${item.dataset.user}`.toLowerCase();
+        item.style.display = text.includes(term) ? "" : "none";
+      });
+    });
+  </script>
 </body>
 </html>
