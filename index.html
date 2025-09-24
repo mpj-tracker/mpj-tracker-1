@@ -1,554 +1,703 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MPJ Tracker</title>
 
-  <!-- favicon + logo (adjust paths if needed) -->
-  <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
-  <link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png"/>
+  <!-- Theme / PWA bits -->
+  <meta name="theme-color" content="#0b5f3b" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png" />
 
-  <!-- theme -->
-  <meta name="theme-color" content="#0b5f3b"/>
-
-  <!-- Supabase UMD (must be before our script) -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js" defer></script>
+  <!-- Supabase UMD (no module/CORS issues) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.47.6/dist/umd/supabase.js"></script>
 
   <style>
     :root{
-      --brand:#0b5f3b; --accent:#0b5f3b; --muted:#f3f4f6; --text:#111827; --border:#e5e7eb;
-      --danger:#b91c1c; --ok:#15803d; --warn:#a16207;
-      --joiner:#198754; --plumber:#0d6efd; --electrician:#dc2626; --plasterer:#6b7280;
-      --decorator:#9333ea; --tiler:#16a34a; --specialist:#14b8a6;
+      --brand:#0b5f3b;
+      --brand-2:#0b5f3b;
+      --muted:#f3f4f6;
+      --ink:#111827;
+      --ok:#10b981;
+      --warn:#f59e0b;
+      --bad:#ef4444;
+
+      /* trade colors */
+      --joiners:#16a34a; /* green */
+      --plumbers:#2563eb; /* blue */
+      --electrical:#dc2626; /* red */
+      --plasterer:#7c3aed; /* violet */
+      --decorators:#ea580c; /* orange */
+      --tiling:#0ea5e9; /* sky */
+      --specialist:#6b7280; /* gray */
+      --card-bg:#fff;
+      --card-br:#e5e7eb;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#fff;color:var(--text)}
-    header{position:sticky;top:0;background:var(--brand);color:#fff;z-index:10}
-    .wrap{max-width:1100px;margin:0 auto;padding:1rem}
-    .bar{display:flex;align-items:center;gap:.75rem}
-    .logo{height:28px}
-    .brand{font-weight:700;letter-spacing:.2px}
+    * { box-sizing:border-box }
+    html,body { height:100% }
+    body{
+      margin:0;
+      font-family:system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Segoe UI Emoji", "Apple Color Emoji";
+      background:#fff;
+      color:var(--ink);
+    }
+    header{
+      position:sticky; top:0; z-index:5;
+      background:var(--brand);
+      color:#fff;
+      border-bottom:3px solid var(--brand-2);
+    }
+    .bar{
+      display:flex; align-items:center; gap:.75rem;
+      padding:.8rem 1rem; max-width:1200px; margin:0 auto;
+    }
+    .logo{ height:28px; display:block }
+    .brand{ font-weight:700; letter-spacing:.3px }
+    .right{ margin-left:auto; font-size:.9rem; opacity:.9 }
+    main{ max-width:1200px; margin:0 auto; padding:1rem }
 
-    main .card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1rem;margin:.75rem 0}
-    .row{display:flex;gap:.75rem;align-items:center}
-    .input{width:100%;padding:.6rem .7rem;border:1px solid var(--border);border-radius:10px}
-    .btn{padding:.55rem .9rem;border-radius:10px;border:1px solid var(--border);background:#fff;cursor:pointer}
-    .btn.accent{background:var(--brand);border-color:var(--brand);color:#fff}
-    .btn.ghost{background:#fff}
-    .btn.small{padding:.35rem .6rem;font-size:.9rem}
-    .muted{color:#6b7280}
-    details>summary{cursor:pointer;list-style:none}
-    details>summary::-webkit-details-marker{display:none}
-    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.9rem}
-    @media (max-width:1100px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
-    @media (max-width:730px){.grid{grid-template-columns:1fr}}
+    .grid{ display:grid; gap:1rem }
+    @media(min-width:900px){ .grid{ grid-template-columns:repeat(3,1fr) } }
 
-    .room{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1rem}
-    .room .title{font-weight:600}
-    .pill{font-size:.8rem;background:var(--muted);border-radius:999px;padding:.1rem .5rem}
-    .progress{height:8px;background:var(--muted);border-radius:999px;overflow:hidden}
-    .progress>span{display:block;height:100%;background:var(--brand)}
-    .trade{border-left:4px solid var(--border);padding-left:.6rem;margin:.6rem 0}
-    .trade.joiners{border-color:var(--joiner)}
-    .trade.plumbers{border-color:var(--plumber)}
-    .trade.electricians{border-color:var(--electrician)}
-    .trade.plasterer{border-color:var(--plasterer)}
-    .trade.decorators{border-color:var(--decorator)}
-    .trade.tiling{border-color:var(--tiler)}
-    .trade.specialist{border-color:var(--specialist)}
-    .trade h4{margin:.2rem 0 .4rem 0}
-    .task{display:flex;align-items:center;gap:.6rem;margin:.35rem 0}
-    .notes{width:100%;min-height:56px;margin:.35rem 0;padding:.5rem;border:1px solid var(--border);border-radius:10px}
-    .thumbs{display:flex;flex-wrap:wrap;gap:.4rem}
-    .thumbs img{width:76px;height:76px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
-    .toolbar{display:flex;gap:.5rem;align-items:center;justify-content:space-between;margin:.6rem 0}
-    .right{margin-left:auto}
-    .caps{font-size:.75rem; text-transform:uppercase; letter-spacing:.08em; color:#6b7280}
+    .card{
+      background:var(--card-bg);
+      border:1px solid var(--card-br);
+      border-radius:14px;
+      padding:1rem;
+    }
+    .row{ display:flex; align-items:center; gap:.5rem }
+    .btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      border:1px solid var(--card-br); background:#fff; color:var(--ink);
+      padding:.5rem .8rem; border-radius:10px; cursor:pointer;
+    }
+    .btn[disabled]{ opacity:.5; cursor:not-allowed }
+    .btn.accent{ background:#fff; border-color:var(--brand); color:var(--brand); font-weight:600 }
+    input.input, textarea.input, select.input{
+      width:100%; border:1px solid var(--card-br); border-radius:10px; padding:.55rem .7rem; background:#fff;
+    }
+    textarea.input{ min-height:70px; resize:vertical }
+    .small{ font-size:.9rem; opacity:.8 }
+    .muted{ color:#6b7280 }
+    .hi{ font-weight:700 }
+
+    details.floor>summary,
+    details.room>summary,
+    details.block>summary{
+      list-style:none; cursor:pointer; padding:.8rem 1rem; background:#fff;
+      border:1px solid var(--card-br); border-radius:12px;
+      display:flex; align-items:center; gap:.75rem;
+    }
+    details.floor[open]>summary,
+    details.room[open]>summary{ border-bottom-left-radius:0; border-bottom-right-radius:0 }
+
+    .tag{ font-size:.75rem; padding:.15rem .45rem; border-radius:999px; background:var(--muted) }
+
+    .progress{ height:10px; border-radius:999px; background:#e5e7eb; overflow:hidden }
+    .bar-in{ height:100%; width:0% }
+
+    .trade{
+      border:1px dashed var(--card-br); border-radius:12px; padding:.75rem;
+      background:#fff; margin:.5rem 0 .75rem;
+    }
+    .trade-head{ display:flex; justify-content:space-between; align-items:center; gap:.5rem }
+    .trade-title{ font-weight:700 }
+    .trade-tasks{ display:grid; gap:.5rem; margin-top:.5rem }
+    .task-row{ display:grid; grid-template-columns:auto 1fr; gap:.6rem; align-items:start }
+    .task-row input[type="checkbox"]{ transform:translateY(3px) }
+
+    .chips{ display:flex; flex-wrap:wrap; gap:.4rem }
+    .chip{ font-size:.75rem; padding:.2rem .5rem; border-radius:999px; border:1px solid var(--card-br) }
+    .thumbs{ display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:.5rem }
+    .thumb{ border:1px solid var(--card-br); border-radius:10px; overflow:hidden; background:#fff }
+    .thumb img{ width:100%; height:90px; object-fit:cover; display:block }
+    .thumb .cap{ padding:.35rem .45rem; font-size:.75rem }
+
+    /* trade color chips and borders */
+    .joiners { --c:var(--joiners) }
+    .plumbers { --c:var(--plumbers) }
+    .electrical{ --c:var(--electrical) }
+    .plasterer { --c:var(--plasterer) }
+    .decorators{ --c:var(--decorators) }
+    .tiling { --c:var(--tiling) }
+    .specialist{ --c:var(--specialist) }
+    .trade .trade-title{ color:var(--c) }
+    .trade{ border-color: color-mix(in srgb, var(--c) 40%, #e5e7eb) }
+    .trade .chip{ border-color: color-mix(in srgb, var(--c) 38%, #e5e7eb); color:var(--c) }
+
+    .kpi{ display:flex; align-items:center; gap:.5rem }
+    .kpi .pct{ min-width:36px; text-align:right; font-feature-settings:"tnum" 1, "ss01" 1 }
+
+    .header-row{ display:flex; align-items:center; gap:.75rem; flex-wrap:wrap }
+    .header-row .spacer{ flex:1 }
+    .danger{ color:var(--bad) }
   </style>
 </head>
 <body>
-<header>
-  <div class="wrap bar">
-    <img class="logo" src="/mpj-logo.png" alt="logo"/>
-    <span class="brand">MPJ Tracker</span>
-    <span class="right caps" id="auth-state">Signed out</span>
-  </div>
-</header>
 
-<main class="wrap">
-
-  <!-- Auth -->
-  <div id="auth-box" class="card">
-    <h2>Login / Sign Up</h2>
-    <p class="muted">Use your email + password to sign in. New users can sign up on the same form.</p>
-    <div class="row">
-      <input id="email" class="input" placeholder="Enter your email"/>
-      <input id="password" class="input" placeholder="Enter your password" type="password"/>
-      <button id="signup-btn" class="btn">Sign Up</button>
-      <button id="login-btn" class="btn">Log In</button>
+  <header>
+    <div class="bar">
+      <img class="logo" src="/mpj-logo.png" alt="logo" />
+      <span class="brand">MPJ Tracker</span>
+      <span class="right" id="auth-state">Signed out</span>
     </div>
-  </div>
+  </header>
 
-  <!-- Project + quick stats -->
-  <div id="project-box" class="card" style="display:none">
-    <h2>Project</h2>
-    <div class="row">
-      <input id="project-name" class="input" placeholder="Project name"/>
-      <input id="project-address" class="input" placeholder="Site address (optional)"/>
-      <button id="use-project" class="btn accent">Use / Create Project</button>
-      <button id="logout-btn" class="btn ghost right">Log out</button>
-    </div>
-
-    <div class="row" style="margin-top:.6rem">
-      <div style="min-width:260px">
-        <div class="muted caps">Overall Progress</div>
-        <div class="progress"><span id="overall-bar" style="width:0%"></span></div>
-        <div class="muted" style="margin-top:.25rem"><span id="overall-pct">0%</span></div>
+  <main>
+    <!-- Auth -->
+    <div id="auth-box" class="card" style="display:none">
+      <h2 class="hi">Login / Sign Up</h2>
+      <p class="small muted">Use your email + password to sign in. New users can sign up on the same form.</p>
+      <div class="grid" style="grid-template-columns:1fr 1fr">
+        <input id="email" class="input" placeholder="Enter your email" />
+        <input id="password" class="input" type="password" placeholder="Enter your password" />
+      </div>
+      <div class="row" style="margin-top:.6rem; gap:.5rem">
+        <button id="signup-btn" class="btn">Sign Up</button>
+        <button id="login-btn" class="btn">Log In</button>
       </div>
     </div>
-  </div>
 
-  <!-- Dashboard (filters, signoffs, photos) -->
-  <div id="dash" class="card" style="display:none">
-    <h2>Project Dashboard</h2>
-    <input id="search" class="input" placeholder="Filter by room, trade, or user…"/>
+    <!-- Project create/use -->
+    <div id="project-box" class="card" style="display:none">
+      <h2 class="hi">Project</h2>
+      <div class="grid" style="grid-template-columns:2fr 2fr auto">
+        <input id="project-name" class="input" placeholder="Project name" />
+        <input id="project-address" class="input" placeholder="Site address (optional)" />
+        <button id="use-project" class="btn accent">Use / Create Project</button>
+      </div>
+      <p class="small muted" style="margin-top:.3rem">Tip: re-use the same name to open it again later.</p>
+    </div>
 
-    <details id="signoffs-block" style="margin-top:.8rem">
-      <summary><strong>All Sign-offs</strong></summary>
-      <div id="all-signoffs" class="muted" style="margin-top:.4rem">No sign-offs yet.</div>
-    </details>
+    <!-- Dashboard (search, global signoffs/photos, overall progress) -->
+    <div id="dash" class="card" style="display:none">
+      <div class="header-row">
+        <h2 class="hi" style="margin:0">Project Dashboard</h2>
+        <div class="spacer"></div>
+        <button id="logout-btn" class="btn">Sign out</button>
+      </div>
 
-    <details id="photos-block" style="margin-top:.8rem">
-      <summary><strong>All Photos</strong></summary>
-      <div id="all-photos" class="thumbs"></div>
-    </details>
-  </div>
+      <input id="search" class="input" placeholder="Filter by room, trade, task, or user…" style="margin:.8rem 0 .6rem" />
 
-  <!-- Floors / Rooms / Tasks -->
-  <div id="rooms" class="grid"></div>
-
-</main>
-
-<!-- ======== APP SCRIPT (one block) ======== -->
-<script defer>
-(async function () {
-  /* 1) Supabase client */
-  const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
-  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-  /* 2) DOM refs */
-  const authBox = document.getElementById('auth-box');
-  const projectBox = document.getElementById('project-box');
-  const dash = document.getElementById('dash');
-  const roomsEl = document.getElementById('rooms');
-  const statusEl = document.getElementById('status');
-  const authStateEl = document.getElementById('auth-state');
-
-  const emailInput = document.getElementById('email');
-  const passwordInput = document.getElementById('password');
-  const signupBtn = document.getElementById('signup-btn');
-  const loginBtn = document.getElementById('login-btn');
-  const logoutBtn = document.getElementById('logout-btn');
-
-  const projectNameInput = document.getElementById('project-name');
-  const projectAddressInput = document.getElementById('project-address');
-  const useProjectBtn = document.getElementById('use-project');
-
-  const searchInput = document.getElementById('search');
-  const allSignoffsEl = document.getElementById('all-signoffs');
-  const allPhotosEl = document.getElementById('all-photos');
-  const overallBar = document.getElementById('overall-bar');
-  const overallPct = document.getElementById('overall-pct');
-
-  /* 3) Settings / helpers */
-  const FLOOR_ORDER = ['Basement','Ground Floor','1st Floor','2nd Floor','Other'];
-  const TRADE_ORDER = ['Joiners','Plumbers','Electricians','Plasterer','Decorators','Tiling','Specialist'];
-  const TRADE_COLORS = {
-    Joiners: 'var(--joiner)', Plumbers: 'var(--plumber)', Electricians:'var(--electrician)',
-    Plasterer:'var(--plasterer)', Decorators:'var(--decorator)', Tiling:'var(--tiler)', Specialist:'var(--specialist)'
-  };
-
-  let session = null;
-  let currentProjectId = null;
-  let cachedRooms = [];
-  let cachedTasks = [];
-
-  const slug = s => (s||'').toString().trim().toLowerCase();
-
-  /* 4) Auth UI */
-  function showAuth(show){
-    authBox.style.display = show ? 'block' : 'none';
-    projectBox.style.display = show ? 'none' : 'block';
-    dash.style.display = show ? 'none' : 'block';
-  }
-
-  /* Sign up / login / logout */
-  signupBtn.addEventListener('click', async () => {
-    const email = (emailInput.value||'').trim();
-    const pw = passwordInput.value||'';
-    if (!email || !pw) return alert('Enter email and password');
-    const { error } = await sb.auth.signUp({ email, password: pw });
-    if (error) return alert(error.message);
-    alert('Sign up successful. Please check your email (if confirmations are enabled).');
-  });
-
-  loginBtn.addEventListener('click', async () => {
-    const email = (emailInput.value||'').trim();
-    const pw = passwordInput.value||'';
-    if (!email || !pw) return alert('Enter email and password');
-    const { error } = await sb.auth.signInWithPassword({ email, password: pw });
-    if (error) return alert(error.message);
-  });
-
-  logoutBtn.addEventListener('click', async () => {
-    await sb.auth.signOut();
-  });
-
-  sb.auth.onAuthStateChange((_e, s) => {
-    session = s?.session ?? s ?? null;
-    authStateEl.textContent = session ? 'Signed in' : 'Signed out';
-    showAuth(!session);
-    if (session) initProjectArea();
-  });
-
-  /* On first load, check for session */
-  {
-    const { data } = await sb.auth.getSession();
-    session = data.session;
-    authStateEl.textContent = session ? 'Signed in' : 'Signed out';
-    showAuth(!session);
-    if (session) initProjectArea();
-  }
-
-  /* 5) Project: Use/Create, then render */
-  useProjectBtn.addEventListener('click', async () => {
-    await ensureProjectAndSeed();
-    await renderEverything();
-  });
-
-  async function initProjectArea(){
-    await ensureProjectAndSeed();
-    await renderEverything();
-  }
-
-  async function ensureProjectAndSeed(){
-    /* If user has a project with the given name, reuse it; else create; then seed rooms/tasks if needed */
-    const name = (projectNameInput.value||'Demo Project').trim();
-    const addr = (projectAddressInput.value||'').trim();
-
-    const { data: existing, error: selErr } = await sb
-      .from('projects').select('id').eq('name', name).eq('user_id', session.user.id).limit(1);
-
-    if (selErr) { console.warn(selErr); }
-
-    if (existing && existing.length){
-      currentProjectId = existing[0].id;
-    } else {
-      const { data: ins, error: insErr } = await sb.from('projects')
-        .insert([{ name, site_address: addr, user_id: session.user.id }])
-        .select('id').single();
-      if (insErr) { alert('Create project failed: '+insErr.message); return; }
-      currentProjectId = ins.id;
-    }
-
-    /* Seed rooms for this project if empty */
-    const { data: roomCount } = await sb.from('rooms').select('id', { count:'exact', head:true })
-      .eq('project_id', currentProjectId);
-    if ((roomCount?.length ?? 0) === 0){
-      // minimal seed – you already created a bigger seed via SQL; we just guard if empty
-      const floors = [
-        ['Basement','Lobby'],['Ground Floor','Lobby'],['1st Floor','Lobby'],['2nd Floor','Lobby']
-      ];
-      await sb.from('rooms').insert(floors.map(([f,r])=>({ project_id: currentProjectId, floor_name:f, room_name:r })));
-    }
-
-    /* Seed default trade task rows if none */
-    const { data: taskCount } = await sb.from('tasks').select('id',{ count:'exact', head:true })
-      .eq('project_id', currentProjectId);
-    if ((taskCount?.length ?? 0) === 0){
-      // Default task names per trade
-      const defaults = {
-        Joiners:['First fix','Second fix','Extras'],
-        Plumbers:['First fix','Second fix','Extras'],
-        Electricians:['First fix','Second fix','Extras'],
-        Plasterer:['First fix','Second fix','Extras'],
-        Decorators:['First fix','Second fix','Extras'],
-        Tiling:['Walls','Floor','Extras'],
-        Specialist:['Extras']
-      };
-      const { data: roomList } = await sb.from('rooms')
-        .select('id, floor_name, room_name').eq('project_id', currentProjectId);
-      const rows = [];
-      roomList.forEach(r=>{
-        Object.entries(defaults).forEach(([trade, arr])=>{
-          arr.forEach(task=>{
-            rows.push({ project_id: currentProjectId, room_id: r.id, trade, task, done:false, notes:'' });
-          });
-        });
-      });
-      if (rows.length) await sb.from('tasks').insert(rows);
-    }
-  }
-
-  /* 6) Render: floors, rooms, tasks, stats, signoffs, photos */
-  async function renderEverything(){
-    const { data: rooms, error: rErr } = await sb.from('rooms')
-      .select('id, floor_name, room_name').eq('project_id', currentProjectId)
-      .order('floor_name').order('room_name');
-    if (rErr) { roomsEl.textContent = rErr.message; return; }
-    cachedRooms = rooms || [];
-
-    const { data: tasks, error: tErr } = await sb.from('tasks')
-      .select('id, room_id, trade, task, done, notes, done_by, done_at, photo_key')
-      .eq('project_id', currentProjectId);
-    if (tErr) { roomsEl.textContent = tErr.message; return; }
-    cachedTasks = tasks || [];
-
-    renderFloors();
-    renderDashboard();
-  }
-
-  function renderFloors(){
-    /* group rooms by floor, ordered by FLOOR_ORDER */
-    const byFloor = {};
-    cachedRooms.forEach(r=>{
-      if (!byFloor[r.floor_name]) byFloor[r.floor_name]=[];
-      byFloor[r.floor_name].push(r);
-    });
-
-    const floors = Object.keys(byFloor).sort((a,b)=>FLOOR_ORDER.indexOf(a)-FLOOR_ORDER.indexOf(b));
-    const frag = document.createDocumentFragment();
-
-    floors.forEach(floor=>{
-      const wrap = document.createElement('div');
-      wrap.className = 'room';
-      const floorTasks = cachedTasks.filter(t=>byFloor[floor].some(r=>r.id===t.room_id));
-      const done = floorTasks.filter(t=>t.done).length;
-      const total = floorTasks.length || 1;
-      const pct = Math.round((done/total)*100);
-
-      wrap.innerHTML = `
-        <div class="toolbar">
-          <div class="title">${floor}</div>
-          <span class="muted">${done}/${total}</span>
-          <div class="progress" style="min-width:160px"><span style="width:${pct}%"></span></div>
-          <span class="muted">${pct}%</span>
+      <div class="row" style="gap:1rem; align-items:center">
+        <span class="small">Overall Progress</span>
+        <div class="progress" style="flex:1">
+          <div id="overall-bar" class="bar-in" style="background:var(--ok)"></div>
         </div>
-        <div class="grid" data-floor="${floor}"></div>
-      `;
-      const grid = wrap.querySelector('.grid');
+        <span id="overall-pct" class="small pct">0%</span>
+      </div>
 
-      /* each room card (collapsed details) */
-      byFloor[floor].forEach(room=>{
-        const card = document.createElement('details');
-        card.className = 'room';
-        card.innerHTML = `
-          <summary class="row">
-            <span class="title">${room.room_name}</span>
-            <span class="muted" id="rstat-${room.id}">0/0</span>
-            <div class="progress" style="min-width:120px"><span id="rbar-${room.id}" style="width:0%"></span></div>
-            <span class="muted" id="rpct-${room.id}">0%</span>
-          </summary>
-          <div id="room-body-${room.id}"></div>
-        `;
-        grid.appendChild(card);
-        renderRoomBody(room.id);
-      });
+      <details id="all-signoffs" class="block" style="margin-top:.8rem">
+        <summary><strong>All Sign-offs</strong></summary>
+        <div id="signoffs-list" class="grid" style="grid-template-columns:1fr"></div>
+      </details>
 
-      frag.appendChild(wrap);
+      <details id="photos-block" class="block" style="margin-top:.8rem">
+        <summary><strong>All Photos</strong></summary>
+        <div id="all-photos" class="thumbs"></div>
+      </details>
+    </div>
+
+    <!-- Floors / Rooms / Trades / Tasks -->
+    <div id="rooms" class="grid" style="grid-template-columns:1fr"></div>
+
+  </main>
+
+  <!-- ======== APP SCRIPT (single block) ======== -->
+  <script defer>
+  (async function () {
+    /* 1) Supabase client */
+    const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    /* 2) DOM refs */
+    const authBox = document.getElementById('auth-box');
+    const projectBox = document.getElementById('project-box');
+    const dash = document.getElementById('dash');
+    const roomsEl = document.getElementById('rooms');
+    const authStateEl = document.getElementById('auth-state');
+
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const signupBtn = document.getElementById('signup-btn');
+    const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    const projectNameInput = document.getElementById('project-name');
+    const projectAddressInput= document.getElementById('project-address');
+    const useProjectBtn = document.getElementById('use-project');
+
+    const searchInput = document.getElementById('search');
+    const allSignoffsEl = document.getElementById('signoffs-list');
+    const allPhotosEl = document.getElementById('all-photos');
+    const overallBar = document.getElementById('overall-bar');
+    const overallPct = document.getElementById('overall-pct');
+
+    /* 3) Constants */
+    const FLOOR_ORDER = ['Basement','Ground Floor','1st Floor','2nd Floor','Other'];
+
+    const TRADES = [
+      { key:'Joiners', color:'var(--joiners)', tasks:['First fix','Second fix','Extras'] },
+      { key:'Electrical', color:'var(--electrical)',tasks:['First fix','Second fix','Extras'] },
+      { key:'Plumbers', color:'var(--plumbers)', tasks:['First fix','Second fix','Extras'] },
+      { key:'Plasterer', color:'var(--plasterer)', tasks:['First fix','Second fix','Extras'] },
+      { key:'Decorators', color:'var(--decorators)',tasks:['First fix','Second fix','Extras'] },
+      { key:'Tiling', color:'var(--tiling)', tasks:['Walls','Floor','Extras'] },
+      { key:'Specialist', color:'var(--specialist)',tasks:['Extras'] },
+    ];
+
+    /* 4) Session + UI state */
+    let session = null;
+    let currentProjectId = null;
+    let currentUser = null;
+
+    const slugify = s => (s||'').toLowerCase().replace(/\s+/g,' ').trim();
+
+    function showAuth(){ authBox.style.display='block'; projectBox.style.display='none'; dash.style.display='none'; roomsEl.innerHTML=''; }
+    function showProject(){ authBox.style.display='none'; projectBox.style.display='block'; dash.style.display='none'; roomsEl.innerHTML=''; }
+    function showApp(){ authBox.style.display='none'; projectBox.style.display='none'; dash.style.display='block'; }
+
+    /* 5) Auth wiring */
+    signupBtn.addEventListener('click', async ()=>{
+      const email=(emailInput.value||'').trim(), pw=passwordInput.value||'';
+      if(!email||!pw) return alert('Please enter email and password');
+      const { error } = await sb.auth.signUp({ email, password: pw });
+      if(error) return alert(error.message);
+      alert('Sign up ok! Check your inbox to confirm (if required).');
+    });
+    loginBtn.addEventListener('click', async ()=>{
+      const email=(emailInput.value||'').trim(), pw=passwordInput.value||'';
+      if(!email||!pw) return alert('Please enter email and password');
+      const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+      if(error) return alert(error.message);
+    });
+    logoutBtn.addEventListener('click', async ()=>{ await sb.auth.signOut(); });
+
+    sb.auth.onAuthStateChange(async (_evt, s) => {
+      session = s ?? session;
+      const g = await sb.auth.getSession();
+      session = g.data.session;
+      currentUser = session?.user || null;
+      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email}` : 'Signed out';
+      if(currentUser) showProject(); else showAuth();
     });
 
-    roomsEl.replaceChildren(frag);
+    // initial
+    { const { data } = await sb.auth.getSession(); session = data.session; currentUser = session?.user || null; if(currentUser) showProject(); else showAuth(); }
 
-    /* overall bar */
-    const done = cachedTasks.filter(t=>t.done).length;
-    const total = cachedTasks.length || 1;
-    const pct = Math.round(done/total*100);
-    overallBar.style.width = pct+'%';
-    overallPct.textContent = pct+'%';
-  }
+    /* 6) Use/Create project (+ auto seed rooms & tasks if empty) */
+    useProjectBtn.addEventListener('click', async ()=>{
+      const name = (projectNameInput.value||'').trim();
+      const addr = (projectAddressInput.value||'').trim();
+      if(!name) return alert('Enter a project name');
 
-  function renderRoomBody(roomId){
-    const container = document.getElementById(`room-body-${roomId}`);
-    const tasks = cachedTasks.filter(t=>t.room_id===roomId);
+      // find existing for this user
+      const { data: existing, error: findErr } = await sb
+        .from('projects').select('id').eq('user_id', currentUser.id).ilike('name', name).limit(1);
+      if(findErr) return alert(findErr.message);
 
-    /* progress numbers for summary */
-    const done = tasks.filter(t=>t.done).length;
-    const total = tasks.length || 1;
-    const pct = Math.round(done/total*100);
-    const rstat = document.getElementById(`rstat-${roomId}`);
-    const rbar = document.getElementById(`rbar-${roomId}`);
-    const rpct = document.getElementById(`rpct-${roomId}`);
-    if (rstat) rstat.textContent = `${done}/${total}`;
-    if (rbar) rbar.style.width = pct+'%';
-    if (rpct) rpct.textContent = pct+'%';
+      if(existing?.length){
+        currentProjectId = existing[0].id;
+      } else {
+        const { data: ins, error: insErr } = await sb
+          .from('projects')
+          .insert({ name, site_address: addr, user_id: currentUser.id })
+          .select('id').single();
+        if(insErr) return alert(insErr.message);
+        currentProjectId = ins.id;
+      }
 
-    /* group by trade */
-    const byTrade = {};
-    tasks.forEach(t=>{
-      if (!byTrade[t.trade]) byTrade[t.trade]=[];
-      byTrade[t.trade].push(t);
+      // auto-seed rooms if none:
+      const { data: roomCount, error: rcErr } = await sb.from('rooms').select('id', { count:'exact', head:true }).eq('project_id', currentProjectId);
+      if(rcErr) console.warn(rcErr);
+      if(!roomCount || roomCount.count === 0){
+        await seedRoomsAndTasks(currentProjectId);
+      }
+
+      showApp();
+      await renderAll();
     });
 
-    const tradeFrag = document.createDocumentFragment();
+    async function seedRoomsAndTasks(pid){
+      // seed rooms
+      const ROOM_SETS = {
+        'Basement': ['Lobby','Bar','Cinema','Gym','Plant room','Safe room','Steam room','Utility room','WC','Treatment room','Treatment room 2','Wine room'],
+        'Ground Floor': ['Lobby','Living room','Dining room','Kitchen','WC','Store','Annex kitchenette','Annex ensuite','Annex Bedroom'],
+        '1st Floor': ['Lobby','Bedroom 3','Bedroom 3 ensuite','Bedroom 4','Bedroom 4 ensuite','Bedroom 5','Bedroom 5 ensuite','Bedroom 6','Bedroom 6 ensuite'],
+        '2nd Floor': ['Lobby','Bedroom 1','Bedroom 1 ensuite','Bedroom 1 dresser','Bedroom 2','Bedroom 2 ensuite','Bedroom 2 dresser','Rod office','Sheila office'],
+        'Other': []
+      };
 
-    TRADE_ORDER.forEach(tr=>{
-      const items = byTrade[tr] || [];
-      if (!items.length) return;
+      const roomsToInsert = [];
+      for(const floor of FLOOR_ORDER){
+        (ROOM_SETS[floor]||[]).forEach(room_name=>{
+          roomsToInsert.push({ project_id: pid, floor_name: floor, room_name });
+        });
+      }
+      if(roomsToInsert.length){
+        const { error: rErr } = await sb.from('rooms').insert(roomsToInsert);
+        if(rErr) console.warn('Seed rooms error:', rErr.message);
+      }
 
-      const sect = document.createElement('div');
-      sect.className = `trade ${slug(tr)}`;
-      sect.style.borderLeftColor = TRADE_COLORS[tr] || 'var(--border)';
-      sect.innerHTML = `<h4>${tr}</h4>`;
-
-      items.forEach(task=>{
-        const row = document.createElement('div');
-        row.className = 'task';
-        row.innerHTML = `
-          <input type="checkbox" ${task.done ? 'checked':''} data-task="${task.id}"/>
-          <span>${task.task}</span>
-        `;
-        const cb = row.querySelector('input[type=checkbox]');
-        cb.addEventListener('change', async () => {
-          const nowDone = !!cb.checked;
-          const upd = { done: nowDone };
-          if (nowDone) {
-            upd.done_by = session.user.id;
-            upd.done_at = new Date().toISOString();
-          } else {
-            upd.done_by = null; upd.done_at = null;
+      // seed default tasks for each room (for each trade)
+      const { data: rooms, error } = await sb.from('rooms').select('id, floor_name, room_name').eq('project_id', pid);
+      if(error) return console.warn(error.message);
+      const taskRows = [];
+      for(const r of rooms){
+        for(const t of TRADES){
+          for(const tk of t.tasks){
+            taskRows.push({ room_id: r.id, trade: t.key, task: tk, done: false, notes: '' });
           }
-          await sb.from('tasks').update(upd).eq('id', task.id);
-          task.done = nowDone; task.done_by = upd.done_by; task.done_at = upd.done_at;
-          renderRoomBody(roomId); /* refresh counts */
-          renderDashboardRowFromTask(task); /* update dashboard blocks */
-        });
-        sect.appendChild(row);
-
-        /* notes */
-        const n = document.createElement('textarea');
-        n.className = 'notes';
-        n.placeholder = 'Notes';
-        n.value = task.notes || '';
-        n.addEventListener('change', async ()=>{
-          task.notes = n.value;
-          await sb.from('tasks').update({ notes: task.notes }).eq('id', task.id);
-        });
-        sect.appendChild(n);
-
-        /* photo upload */
-        const up = document.createElement('input');
-        up.type = 'file'; up.accept = "image/*";
-        up.addEventListener('change', async ()=>{
-          const f = up.files?.[0]; if (!f) return;
-          const key = `${currentProjectId}/${roomId}/${task.id}/${Date.now()}_${f.name}`;
-          const { error: ulErr } = await sb.storage.from('photos').upload(key, f, { upsert:false });
-          if (ulErr) return alert(ulErr.message);
-          task.photo_key = key;
-          await sb.from('tasks').update({ photo_key: key }).eq('id', task.id);
-          await renderDashboard(); /* refresh All Photos */
-        });
-        sect.appendChild(up);
-
-        const thumbs = document.createElement('div');
-        thumbs.className = 'thumbs';
-        if (task.photo_key){
-          const { data } = sb.storage.from('photos').getPublicUrl(task.photo_key);
-          const img = document.createElement('img');
-          img.src = data.publicUrl; img.alt='photo';
-          thumbs.appendChild(img);
         }
-        sect.appendChild(thumbs);
+      }
+      if(taskRows.length){
+        const { error: tErr } = await sb.from('tasks').insert(taskRows);
+        if(tErr) console.warn('Seed tasks error:', tErr.message);
+      }
+    }
 
-        /* sign-off button if done */
-        const so = document.createElement('button');
-        so.className = 'btn small';
-        so.textContent = 'Sign-off';
-        so.disabled = !task.done;
-        so.addEventListener('click', async ()=>{
-          if (!task.done) return;
-          await sb.from('signoffs').insert([{
-            project_id: currentProjectId,
-            room_id: roomId,
-            trade: task.trade,
-            task: task.task,
-            signed_by: session.user.id
-          }]);
-          await renderDashboard(); /* refresh sign-off list */
-          alert('Signed off.');
+    /* 7) Rendering */
+    async function renderAll(){
+      await Promise.all([
+        renderFloorsAndRooms(),
+        renderSignoffs(),
+        renderAllPhotos(),
+        computeOverallProgress()
+      ]);
+    }
+
+    async function renderFloorsAndRooms(){
+      roomsEl.innerHTML = '';
+      // fetch rooms
+      const { data: rooms, error } = await sb
+        .from('rooms')
+        .select('id, floor_name, room_name')
+        .eq('project_id', currentProjectId);
+      if(error){ roomsEl.textContent = error.message; return; }
+
+      // group by floor in desired order
+      const byFloor = new Map();
+      for(const f of FLOOR_ORDER) byFloor.set(f, []);
+      for(const r of rooms){
+        if(!byFloor.has(r.floor_name)) byFloor.set(r.floor_name, []);
+        byFloor.get(r.floor_name).push(r);
+      }
+      // sort rooms alpha
+      for(const [k, arr] of byFloor) arr.sort((a,b)=>a.room_name.localeCompare(b.room_name));
+
+      for(const floor of FLOOR_ORDER){
+        const floorRooms = byFloor.get(floor) || [];
+        const floorDetails = document.createElement('details');
+        floorDetails.className = 'floor';
+        floorDetails.open = false;
+
+        const floorSummary = document.createElement('summary');
+        const floorTitle = document.createElement('span');
+        floorTitle.className='hi';
+        floorTitle.textContent = floor;
+
+        const floorKpi = document.createElement('span');
+        floorKpi.className = 'kpi small';
+        floorKpi.style.marginLeft = 'auto';
+        const floorPct = document.createElement('span'); floorPct.className='pct'; floorPct.textContent='0%';
+        const floorProg = document.createElement('div'); floorProg.className='progress'; floorProg.style.width='220px';
+        const floorBar = document.createElement('div'); floorBar.className='bar-in'; floorBar.style.background='var(--ok)';
+        floorProg.appendChild(floorBar);
+
+        floorKpi.append(floorProg, floorPct);
+        floorSummary.append(floorTitle, floorKpi);
+        floorDetails.appendChild(floorSummary);
+
+        // room list container
+        const wrap = document.createElement('div'); wrap.className='grid'; wrap.style.gridTemplateColumns='1fr';
+        floorDetails.appendChild(wrap);
+
+        roomsEl.appendChild(floorDetails);
+
+        for(const room of floorRooms){
+          const roomDetails = document.createElement('details');
+          roomDetails.className='room'; roomDetails.open=false;
+
+          const sum = document.createElement('summary');
+          sum.innerHTML = `<strong>${room.room_name}</strong>`;
+          // room kpi
+          const rk = document.createElement('span'); rk.className='kpi small'; rk.style.marginLeft='auto';
+          const rpct = document.createElement('span'); rpct.className='pct'; rpct.textContent='0%';
+          const rprog = document.createElement('div'); rprog.className='progress'; rprog.style.width='180px';
+          const rbar = document.createElement('div'); rbar.className='bar-in'; rbar.style.background='var(--ok)';
+          rprog.appendChild(rbar); rk.append(rprog, rpct);
+          sum.appendChild(rk);
+          roomDetails.appendChild(sum);
+
+          // content div
+          const content = document.createElement('div'); content.className='card'; content.style.marginTop='-1px';
+          roomDetails.appendChild(content);
+          wrap.appendChild(roomDetails);
+
+          // render trades/tasks for this room
+          await renderRoomTrades(room, content);
+
+          // compute room progress initially
+          await computeRoomProgress(room.id, rbar, rpct);
+
+          // re-compute floor progress when room toggles (lazy approach)
+          roomDetails.addEventListener('toggle', async ()=>{ await computeFloorProgress(floor, floorBar, floorPct); });
+        }
+
+        // compute initial floor progress
+        await computeFloorProgress(floor, floorBar, floorPct);
+      }
+    }
+
+    async function renderRoomTrades(room, container){
+      container.innerHTML = '';
+      // fetch tasks for room grouped by trade
+      const { data: rows, error } = await sb
+        .from('tasks')
+        .select('id, trade, task, done, notes')
+        .eq('room_id', room.id)
+        .order('trade', { ascending:true })
+        .order('task', { ascending:true });
+      if(error){ container.textContent = 'Tasks error: '+error.message; return; }
+
+      const group = rows.reduce((m, r)=>{ (m[r.trade] ||= []).push(r); return m; }, {});
+      for(const trade of TRADES){
+        const items = group[trade.key] || [];
+        if(items.length === 0) continue;
+
+        const tdiv = document.createElement('div');
+        tdiv.className = `trade ${trade.key.toLowerCase()}`;
+
+        const head = document.createElement('div');
+        head.className = 'trade-head';
+        head.innerHTML = `<span class="trade-title">${trade.key}</span>`;
+        const signBtn = document.createElement('button');
+        signBtn.className='btn'; signBtn.textContent='Sign off trade';
+        head.appendChild(signBtn);
+        tdiv.appendChild(head);
+
+        const list = document.createElement('div');
+        list.className='trade-tasks';
+
+        for(const item of items){
+          const row = document.createElement('div');
+          row.className='task-row';
+
+          const cb = document.createElement('input');
+          cb.type='checkbox'; cb.checked=!!item.done;
+
+          const right = document.createElement('div');
+          right.innerHTML = `
+            <div class="row" style="justify-content:space-between">
+              <div><strong>${item.task}</strong></div>
+              <span class="chip">${trade.key}</span>
+            </div>
+            <label class="small muted">Notes</label>
+            <textarea class="input" placeholder="Add notes…">${item.notes||''}</textarea>
+            <div class="row" style="gap:.5rem; margin-top:.35rem">
+              <input type="file" accept="image/*" capture="environment" />
+              <button class="btn small" type="button">Upload</button>
+            </div>
+            <div class="thumbs" data-thumbs="${item.id}"></div>
+          `;
+
+          // events
+          cb.addEventListener('change', async ()=>{
+            await sb.from('tasks').update({ done: cb.checked, updated_at: new Date().toISOString() }).eq('id', item.id);
+            await computeRoomProgress(room.id); // refresh bars
+            await computeFloorProgress(room.floor_name);
+            await computeOverallProgress();
+            // refresh sign-off button state
+            await toggleSignButton();
+          });
+
+          const ta = right.querySelector('textarea');
+          ta.addEventListener('change', async ()=>{
+            await sb.from('tasks').update({ notes: ta.value, updated_at: new Date().toISOString() }).eq('id', item.id);
+          });
+
+          const fi = right.querySelector('input[type=file]');
+          const up = right.querySelector('button.btn.small');
+          up.addEventListener('click', async ()=>{
+            if(!fi.files?.length) return alert('Choose a photo first');
+            const file = fi.files[0];
+            const path = `${currentProjectId}/${room.id}/${item.id}/${Date.now()}-${file.name}`;
+            const { error: upErr } = await sb.storage.from('photos').upload(path, file, {
+              upsert:true, contentType:file.type, metadata:{
+                uploaded_by: currentUser.email, project_id: currentProjectId, room_id: room.id, task_id: item.id
+              }
+            });
+            if(upErr) return alert(upErr.message);
+            await loadTaskThumbs(item.id);
+            await renderAllPhotos(); // dashboard
+          });
+
+          row.appendChild(cb);
+          row.appendChild(right);
+          list.appendChild(row);
+
+          // initial thumbs
+          await loadTaskThumbs(item.id);
+        }
+
+        // enable/disable sign button based on completion
+        async function toggleSignButton(){
+          const { data: chk } = await sb.from('tasks').select('done').eq('room_id', room.id).eq('trade', trade.key);
+          const total = chk?.length||0, done = (chk||[]).filter(x=>x.done).length;
+          signBtn.disabled = !(total>0 && done===total);
+        }
+        await toggleSignButton();
+
+        signBtn.addEventListener('click', async ()=>{
+          const note = prompt(`Sign off ${trade.key} in ${room.room_name}. Add a note (optional):`) || '';
+          const { error: sErr } = await sb.from('signoffs').insert({
+            project_id: currentProjectId, room_id: room.id, trade: trade.key,
+            signed_by: currentUser.id, signed_by_email: currentUser.email,
+            note, signed_at: new Date().toISOString()
+          });
+          if(sErr) return alert(sErr.message);
+          signBtn.disabled = true;
+          await renderSignoffs();
         });
-        sect.appendChild(so);
-      });
 
-      tradeFrag.appendChild(sect);
-    });
-
-    container.replaceChildren(tradeFrag);
-  }
-
-  /* Dashboard renderers */
-  async function renderDashboard(){
-    renderAllSignoffs();
-    await renderAllPhotos();
-  }
-
-  async function renderAllPhotos(){
-    allPhotosEl.replaceChildren();
-    /* show any photos from tasks with a key */
-    const photos = cachedTasks.filter(t=>t.photo_key);
-    for (const t of photos){
-      const { data } = sb.storage.from('photos').getPublicUrl(t.photo_key);
-      const img = document.createElement('img');
-      img.src = data.publicUrl; img.alt = `${t.trade} - ${t.task}`;
-      allPhotosEl.appendChild(img);
+        container.appendChild(tdiv);
+      }
     }
-  }
 
-  async function renderAllSignoffs(){
-    const { data, error } = await sb
-      .from('signoffs')
-      .select('id, trade, task, created_at, users:profiles!inner(full_name), rooms!inner(room_name, floor_name)')
-      .eq('project_id', currentProjectId)
-      .order('created_at',{ascending:false});
+    async function loadTaskThumbs(taskId){
+      // list objects where metadata.task_id = taskId (via storage.objects table)
+      const { data, error } = await sb
+        .from('storage.objects')
+        .select('id, name, updated_at, metadata')
+        .eq('bucket_id','photos')
+        .contains('metadata', { task_id: taskId });
+      const holder = document.querySelector(`[data-thumbs="${taskId}"]`);
+      if(!holder) return;
+      holder.innerHTML='';
+      if(error || !data?.length){ holder.innerHTML='<span class="small muted">No photos</span>'; return; }
+      for(const o of data){
+        const { data: url } = sb.storage.from('photos').getPublicUrl(o.name);
+        const card = document.createElement('div'); card.className='thumb';
+        const by = (o.metadata?.uploaded_by)||'';
+        const when = new Date(o.updated_at).toLocaleString();
+        card.innerHTML = `<img src="${url.publicUrl}" alt="">
+          <div class="cap small">${by ? by+' · ' : ''}${when}</div>`;
+        holder.appendChild(card);
+      }
+    }
 
-    /* If you don’t have a profiles view, show user id instead */
-    const list = document.createElement('div');
-    if (!data || !data.length){
-      list.textContent = 'No sign-offs yet.';
-    } else {
-      data.forEach(s=>{
-        const row = document.createElement('div');
-        row.className = 'row';
-        const who = s.users?.full_name || s.signed_by || '(user)';
-        row.innerHTML = `
-          <span class="pill">${s.rooms?.floor_name || ''} / ${s.rooms?.room_name || ''}</span>
-          <span style="color:${TRADE_COLORS[s.trade]||'inherit'}">${s.trade}</span>
-          <span>${s.task}</span>
-          <span class="muted">Signed by: ${who}</span>
+    async function renderSignoffs(){
+      allSignoffsEl.innerHTML='';
+      const { data, error } = await sb
+        .from('signoffs')
+        .select('id, room_id, trade, note, signed_by_email, signed_at, rooms!inner(room_name, floor_name)')
+        .eq('project_id', currentProjectId)
+        .order('signed_at',{ascending:false});
+      if(error){ allSignoffsEl.textContent=error.message; return; }
+      if(!data?.length){ allSignoffsEl.innerHTML='<div class="small muted">No sign-offs yet.</div>'; return; }
+      for(const r of data){
+        const div = document.createElement('div'); div.className='card';
+        div.innerHTML = `
+          <div class="row" style="justify-content:space-between">
+            <div><strong>${r.rooms?.floor_name || ''} — ${r.rooms?.room_name || ''}</strong></div>
+            <span class="chip">${r.trade}</span>
+          </div>
+          <div class="small muted">${new Date(r.signed_at).toLocaleString()} · ${r.signed_by_email||''}</div>
+          ${r.note ? `<div class="small" style="margin-top:.4rem">${r.note}</div>` : ``}
         `;
-        list.appendChild(row);
-      });
+        allSignoffsEl.appendChild(div);
+      }
     }
-    allSignoffsEl.replaceChildren(list);
-  }
 
-  function renderDashboardRowFromTask(/* task */){
-    /* Lightweight live tweaks could go here; for simplicity we recompute on next refresh */
-  }
+    async function renderAllPhotos(){
+      allPhotosEl.innerHTML='';
+      // show last 50 project photos
+      const { data, error } = await sb
+        .from('storage.objects')
+        .select('name, updated_at, metadata')
+        .eq('bucket_id','photos')
+        .contains('metadata',{ project_id: currentProjectId })
+        .order('updated_at',{ascending:false})
+        .limit(50);
+      if(error){ allPhotosEl.textContent = error.message; return; }
+      if(!data?.length){ allPhotosEl.innerHTML='<div class="small muted">No photos yet.</div>'; return; }
+      for(const o of data){
+        const { data: url } = sb.storage.from('photos').getPublicUrl(o.name);
+        const div = document.createElement('div'); div.className='thumb';
+        const cap = `${o.metadata?.uploaded_by||''} · ${new Date(o.updated_at).toLocaleString()}`;
+        div.innerHTML = `<img src="${url.publicUrl}" alt=""><div class="cap small">${cap}</div>`;
+        allPhotosEl.appendChild(div);
+      }
+    }
 
-  /* Search filter – collapses to matches */
-  searchInput?.addEventListener('input', ()=>{
-    const q = slug(searchInput.value);
-    document.querySelectorAll('details.room').forEach(d=>{
-      const txt = slug(d.querySelector('summary .title')?.textContent||'');
-      d.style.display = (!q || txt.includes(q)) ? '' : 'none';
+    /* 8) Progress */
+    async function computeRoomProgress(roomId, barEl, pctEl){
+      const { data, error } = await sb.from('tasks').select('done').eq('room_id', roomId);
+      if(error||!data){ if(barEl) barEl.style.width='0%'; if(pctEl) pctEl.textContent='0%'; return 0; }
+      const total = data.length, done = data.filter(x=>x.done).length;
+      const pct = total? Math.round((done/total)*100):0;
+      if(barEl) barEl.style.width = pct+'%';
+      if(pctEl) pctEl.textContent = pct+'%';
+      return { total, done, pct };
+    }
+    async function computeFloorProgress(floorName, barEl, pctEl){
+      const { data: rooms } = await sb.from('rooms').select('id').eq('project_id', currentProjectId).eq('floor_name', floorName);
+      let sumDone=0, sumTotal=0;
+      for(const r of (rooms||[])){
+        const { data: ts } = await sb.from('tasks').select('done').eq('room_id', r.id);
+        sumTotal += ts?.length||0; sumDone += (ts||[]).filter(x=>x.done).length;
+      }
+      const pct = sumTotal? Math.round(100*sumDone/sumTotal):0;
+      if(barEl) barEl.style.width=pct+'%';
+      if(pctEl) pctEl.textContent=pct+'%';
+      return pct;
+    }
+    async function computeOverallProgress(){
+      const { data } = await sb
+        .from('rooms').select('id').eq('project_id', currentProjectId);
+      let done=0, total=0;
+      for(const r of (data||[])){
+        const { data: ts } = await sb.from('tasks').select('done').eq('room_id', r.id);
+        total += ts?.length||0; done += (ts||[]).filter(x=>x.done).length;
+      }
+      const pct = total? Math.round(100*done/total):0;
+      overallBar.style.width = pct+'%';
+      overallPct.textContent = pct+'%';
+    }
+
+    /* 9) Search filter (client-side) */
+    searchInput.addEventListener('input', ()=>{
+      const q = slugify(searchInput.value);
+      const rooms = roomsEl.querySelectorAll('details.room');
+      rooms.forEach(r=>{
+        const text = slugify(r.textContent);
+        r.style.display = text.includes(q) ? '' : 'none';
+      });
     });
-  });
 
-})();
-</script>
+    // kick first render if already signed in and project chosen previously (optional: you can persist projectId in localStorage)
+    // localStorage restore (optional)
+    try{
+      const saved = localStorage.getItem('mpj_last_project');
+      if(saved && currentUser){
+        currentProjectId = saved;
+        showApp();
+        renderAll();
+      }
+    }catch(e){}
+
+    // save current projectId whenever it changes
+    const _setPid = (pid)=>{ try{ localStorage.setItem('mpj_last_project', pid||'') }catch(e){} };
+
+    // observe currentProjectId set
+    Object.defineProperty(window, 'currentProjectId', {
+      set(v){ _setPid(v); return v; },
+      get(){ return currentProjectId; }
+    });
+
+  })();
+  </script>
 </body>
 </html>
