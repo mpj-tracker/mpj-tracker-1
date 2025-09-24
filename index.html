@@ -7,179 +7,151 @@
 
   <!-- Colors / PWA bits -->
   <meta name="theme-color" content="#0b5f3b" />
-  <link rel="manifest" href="/manifest.webmanifest?v=1" />
+  <link rel="manifest" href="/manifest.webmanifest?v=3" />
 
   <!-- Icons -->
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <!-- Optional larger icon shown in the header -->
   <link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png" />
 
-  <!-- Supabase core (global UMD) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <!-- Supabase Auth UI Web (as a module with correct CORS) -->
-  <script type="module">
-    import 'https://esm.sh/@supabase/auth-ui@0.5.8/dist/web';
-  </script>
-
   <style>
-    :root {
-      --brand: #0b5f3b;
-      --border: #e5e7eb;
-      --muted: #f3f4f6;
-      --text: #111827;
+    :root{
+      --brand:#0b5f3b; --accent:#f0b323; --bg:#f7faf9; --border:#e5e7eb; --muted:#eef3f1;
+      --text:#111827;
     }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Segoe UI Emoji", "Segoe UI Symbol";
-      background: #fff;
-      color: var(--text);
+    *{ box-sizing:border-box }
+    html,body{ height:100% }
+    body{
+      margin:0; background:#fff; color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Segoe UI Emoji","Segoe UI Symbol";
     }
-    header {
-      position: sticky; top: 0; z-index: 10;
-      display: flex; align-items: center; gap: .75rem;
-      padding: .75rem 1rem;
-      background: #fff;
-      border-bottom: 2px solid var(--border);
+    header{
+      position:sticky; top:0; z-index:10; background:#fff; border-bottom:3px solid var(--brand);
     }
-    .brand {
-      display: inline-flex; align-items: center; gap: .5rem;
-      font-weight: 700; color: var(--brand);
+    .bar{
+      max-width:1200px; margin:0 auto; display:flex; align-items:center; gap:.75rem;
+      padding:.75rem 1rem;
     }
-    .brand img { height: 28px; width: auto; border-radius: 6px; object-fit: contain; }
-    .grow { flex: 1; }
-    .status { color: #6b7280; font-size: .875rem; }
-    .container {
-      max-width: 980px;
-      margin: 1.25rem auto;
-      padding: 0 1rem;
-    }
-    .card {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: #fff;
-      padding: 1rem;
-    }
-    .btn {
-      appearance: none;
-      border: none;
-      border-radius: 10px;
-      padding: .6rem 1rem;
-      cursor: pointer;
-      font-weight: 600;
-    }
-    .btn.accent { background: var(--brand); color: #fff; }
-    .row { display: flex; gap: .5rem; align-items: center; }
-    .right { margin-left: auto; }
-    /* Keep the Auth UI tidy */
-    supabase-auth::part(container) { border: 1px solid var(--border); border-radius: 12px; }
-  </style>
-</head>
+    .logo{ display:flex; align-items:center; gap:.5rem; }
+    .logo img{ height:28px; border-radius:6px; background:#fff }
+    .brand{ font-weight:700; color:var(--brand) }
+    .status{ margin-left:auto; color:#6b7280; font-size:.9rem }
+    main{ max-width:1200px; margin:1.25rem auto; padding:0 1rem; }
 
+    /* Card */
+    .card{
+      border:1px solid var(--border); background:#fff; border-radius:12px; padding:18px;
+      box-shadow:0 1px 2px rgba(0,0,0,.03);
+    }
+    .card h2{ margin:0 0 .5rem 0 }
+    .muted{ color:#6b7280; font-size:.95rem }
+
+    /* Buttons */
+    .btn{
+      display:inline-flex; align-items:center; gap:.5rem;
+      padding:.6rem .9rem; border-radius:999px; background:var(--brand); color:#fff;
+      border:none; cursor:pointer;
+    }
+    .btn.secondary{ background:#fff; color:var(--brand); border:1px solid var(--brand) }
+
+    /* Hide sections depending on auth */
+    #app{ display:none }
+  </style>
+
+  <!-- We will import modules via ESM inside a <script type="module"> below -->
+</head>
 <body>
   <header>
-    <span class="brand">
-      <img src="/mpj-logo.png" alt="logo" />
-      MPJ Tracker
-    </span>
-    <span id="status" class="status right">Signed out</span>
+    <div class="bar">
+      <div class="logo">
+        <img src="/mpj-logo.png" alt="MPJ" />
+        <span class="brand">MPJ Tracker</span>
+      </div>
+      <span id="status" class="status">Signed out</span>
+    </div>
   </header>
 
-  <main class="container">
-    <!-- LOGIN BOX (shown when logged OUT) -->
-    <div id="auth-box" class="card">
-      <h2 style="margin-top:0">Login / Sign Up</h2>
-      <!-- Built-in email/password auth form -->
-      <supabase-auth
-        id="auth"
-        providers="email"
-        appearance='{"style":{"button":{"borderRadius":"10px"},"anchor":{"color":"#0b5f3b"}}}'
-        view="sign_in"
-        supabase-url="https://zpnruthpkmcnpxiztpf.supabase.co"
-        supabase-key="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4">
-      </supabase-auth>
-      <p style="margin:.75rem 0 0;color:#6b7280;font-size:.9rem">
-        Use your email + password to sign in. New users can sign up on the same form.
-      </p>
+  <main>
+    <!-- Auth (shown when logged OUT) -->
+    <div id="auth" class="card">
+      <h2>Login / Sign Up</h2>
+      <p class="muted">Use your email + password to sign in. New users can sign up on the same form.</p>
+      <!-- Supabase Auth UI will render here -->
     </div>
 
-    <!-- APP UI (shown when logged IN) -->
-    <div id="app" class="card" style="display:none">
-      <div class="row">
-        <h2 style="margin:0">Welcome</h2>
-        <button id="logout-btn" class="btn accent right">Log out</button>
-      </div>
-      <p id="whoami" style="margin:.5rem 0 0;color:#6b7280"></p>
-
-      <!-- Placeholder app content; replace with your rooms/tasks UI later -->
-      <div style="margin-top:1rem;background:var(--muted);border:1px dashed var(--border);border-radius:12px;padding:1rem">
-        <strong>You're signed in.</strong>
-        <div style="margin-top:.5rem">Add your project UI here.</div>
-      </div>
+    <!-- App (shown when logged IN) -->
+    <div id="app" class="card">
+      <h2>Welcome 👋</h2>
+      <p class="muted">You’re signed in. Replace this block with your app UI.</p>
+      <button id="logout" class="btn">Log out</button>
     </div>
   </main>
 
-  <!-- App wiring (module). NOTE: use JS comments inside modules, not HTML comments. -->
   <script type="module">
-    // Config
-    const SUPABASE_URL = 'https://zpnruthpkmcnpxiztpf.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4';
+    // Import Supabase + the Web Auth UI (CORS-safe via ESM)
+    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+    import { Auth } from 'https://esm.sh/@supabase/auth-ui-web@0.5.8'
 
-    // Create client
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // 1) SET YOUR KEYS HERE
+    const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co"
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4"
 
-    // Elements
-    const statusEl = document.getElementById('status');
-    const authBox = document.getElementById('auth-box');
-    const appBox = document.getElementById('app');
-    const whoami = document.getElementById('whoami');
-    const logoutBtn = document.getElementById('logout-btn');
+    // 2) Create the client
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
-    let session = null;
+    // 3) Grab DOM elements we toggle
+    const authBox = document.getElementById('auth')
+    const appBox = document.getElementById('app')
+    const statusEl = document.getElementById('status')
+    const logoutBtn = document.getElementById('logout')
 
-    function show(el) { el && (el.style.display = 'block'); }
-    function hide(el) { el && (el.style.display = 'none'); }
+    // 4) Mount the Auth UI (email/password)
+    Auth({
+      supabaseClient: supabase,
+      target: '#auth', // you can also pass the DOM element: authBox
+      providers: ['email'], // email/password
+      appearance: { theme: 'default' } // clean default theme
+    })
+
+    // 5) Keep the current session in memory and render UI accordingly
+    let session = null
 
     function render() {
-      if (session) {
-        statusEl.textContent = 'Signed in';
-        hide(authBox);
-        show(appBox);
-        const email = session.user?.email || '(unknown)';
-        whoami.textContent = `Signed in as ${email}`;
+      const signedIn = !!session
+      if (signedIn) {
+        if (authBox) authBox.style.display = 'none'
+        if (appBox) appBox.style.display = 'block'
+        if (statusEl) statusEl.textContent = 'Signed in'
       } else {
-        statusEl.textContent = 'Signed out';
-        show(authBox);
-        hide(appBox);
-        whoami.textContent = '';
+        if (authBox) authBox.style.display = 'block'
+        if (appBox) appBox.style.display = 'none'
+        if (statusEl) statusEl.textContent = 'Signed out'
       }
     }
 
-    // Auth state listener (fires on sign in/out)
+    // 6) React to auth changes
     supabase.auth.onAuthStateChange((_event, s) => {
-      session = s?.session ?? s ?? null;
-      render();
-    });
+      session = s?.session ?? s ?? null // works for v1/v2 event payloads
+      render()
+    })
 
-    // Initial session on load
-    (async () => {
-      const { data } = await supabase.auth.getSession();
-      session = data.session;
-      render();
-    })();
+    // 7) On first load, check if already signed in
+    ;(async () => {
+      const { data } = await supabase.auth.getSession()
+      session = data.session
+      render()
+    })()
 
-    // Logout
+    // 8) Logout button
     if (logoutBtn) {
       logoutBtn.addEventListener('click', async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) alert('Logout error: ' + error.message);
-      });
+        const { error } = await supabase.auth.signOut()
+        if (error) alert('Logout error: ' + error.message)
+      })
     }
 
-    // Optional: service worker (PWA offline cache)
+    // 9) Optional: register your service worker for PWA/offline (if sw.js exists)
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js?v=4').catch(() => {});
+      navigator.serviceWorker.register('/sw.js?v=4').catch(() => {})
     }
   </script>
 </body>
