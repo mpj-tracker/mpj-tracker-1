@@ -285,7 +285,11 @@
     });
 
     // initial
-    { const { data } = await sb.auth.getSession(); session = data.session; currentUser = session?.user || null; if(currentUser) showProject(); else showAuth(); }
+const { data } = await sb.auth.getSession();
+session = data.session;
+currentUser = session?.user ?? null;
+authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email}` : `Signed out`;
+if (currentUser) showProject(); else showAuth();
 
     /* 6) Use/Create project (+ auto seed rooms & tasks if empty) */
     useProjectBtn.addEventListener('click', async ()=>{
