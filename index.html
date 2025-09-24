@@ -540,6 +540,71 @@
       });
     });
 
+// Handle clicks on dynamically-rendered "Sign off" buttons
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest('.signoff-btn');
+  if (!btn) return;
+
+  try {
+    if (!currentProjectId || !session?.user) {
+      return alert('Please sign in and choose a project first.');
+    }
+
+    const roomId = btn.dataset.roomId || null;
+    const taskId = btn.dataset.taskId || null;
+    const trade = btn.dataset.trade || null;
+    const phase = btn.dataset.phase || null;
+    const whoId = session.user.id;
+    const whoName = session.user.email;
+
+    if (!roomId || !trade) {
+      return alert('Missing room or trade on sign-off button.');
+    }
+
+    const { error } = await sb.from('signoffs').insert({
+      project_id: currentProjectId,
+      room_id: roomId,
+      task_id: taskId,
+      trade,
+      phase,
+      signed_by: whoId,
+      signed_by_name: whoName
+    });
+    if (error) throw error;
+
+    btn.textContent = 'Signed';
+    btn.disabled = true;
+
+    if (typeof renderDash === 'function') renderDash(currentProjectId);
+  } catch (err) {
+    alert(err.message || String(err));
+  }
+});
+
+// Dashboard renderer (list recent sign-offs)
+async function renderDash(pid) {
+  const { data: rows, error } = await sb
+    .from('signoffs')
+    .select('created_at, trade, phase, signed_by_name, rooms!inner(room_name)')
+    .eq('project_id', pid)
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (error) { console.warn(error); return; }
+
+  const holder = document.getElementById('all-signoffs');
+  if (!holder) return;
+
+  holder.innerHTML = rows.map(r => `
+    <div class="row" style="gap:.5rem">
+      <span class="chip ${r.trade || ''}">${r.trade || ''}</span>
+      <span class="chip">${r.phase || ''}</span>
+      <span>${r.rooms?.room_name || ''}</span>
+      <span class="muted">${r.signed_by_name || ''}</span>
+      <span class="muted">${new Date(r.created_at).toLocaleString()}</span>
+    </div>
+  `).join('');
+}
   })();
   </script>
 </body>
