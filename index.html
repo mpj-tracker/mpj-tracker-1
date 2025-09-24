@@ -308,8 +308,8 @@ $$(".input[data-toggle]").forEach((cb) => {
   });
       </script>
 <script type="module">
-//================= AUTH WIRING ================= 
-
+<!-- ================= AUTH WIRING ================= -->
+<script>
   // keep the current session
   let session = null;
 
@@ -337,7 +337,7 @@ $$(".input[data-toggle]").forEach((cb) => {
 
   // Service Worker registration (for PWA offline support)
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(() => {});
+    navigator.serviceWorker.register("sw.js?v=4").catch(() => {});
   }
 
   // ---------------- AUTH FORM LOGIC ----------------
