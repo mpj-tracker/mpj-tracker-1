@@ -1,390 +1,519 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MPJ Tracker</title>
 
-  <!-- Optional PWA bits (kept simple) -->
-  <meta name="theme-color" content="#0b5f3b"/>
-  <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
-  <link rel="manifest" href="/manifest.webmanifest?v=1"/>
+  <!-- PWA/branding bits (optional but nice) -->
+  <meta name="theme-color" content="#0b5f3b" />
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png" />
+  <link rel="manifest" href="/manifest.webmanifest?v=2" />
 
-  <!-- Supabase UMD (no modules/CORS issues) -->
+  <!-- Supabase (UMD) -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
-    :root{
-      --brand:#0b5f3b; --accent:#f0b323; --muted:#eef3f1; --border:#e3e8ee; --text:#111827;
-      --card:#fff; --chip:#f9fafb;
+    :root {
+      --brand:#0b5f3b;
+      --accent:#f0b323;
+      --bg:#f7faf9;
+      --border:#e3e6eb;
+      --muted:#eef3f1;
+      --text:#111827;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#fff;color:var(--text)}
-    header{position:sticky;top:0;background:#fff;border-bottom:3px solid var(--brand);z-index:2}
-    .hi{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:.75rem;padding:.6rem 1rem}
-    .logo{display:flex;align-items:center;gap:.6rem;background:var(--brand);color:#fff;padding:.35rem .6rem;border-radius:12px}
-    .logo img{height:26px;border-radius:4px;background:#fff}
-    .brand{font-weight:700;letter-spacing:.2px}
-    .status{margin-left:auto;font-size:.875rem;color:#6b7280}
-    main{max-width:1200px;margin:1rem auto;padding:0 1rem}
-    .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1rem;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-    .row{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
-    .input{width:100%;max-width:340px;border:1px solid var(--border);border-radius:10px;padding:.6rem .8rem}
-    .btn{border:none;background:var(--brand);color:#fff;padding:.6rem .9rem;border-radius:999px;cursor:pointer}
-    .btn.secondary{background:#fff;color:var(--brand);border:2px solid var(--brand)}
-    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:1rem;margin-top:1rem}
-    .room h3{margin:.2rem 0 .6rem 0}
-    .task{display:flex;align-items:center;gap:.5rem;margin:.35rem 0}
-    .task input[type="checkbox"]{transform:scale(1.2)}
-    .note{width:100%;min-height:68px;border:1px solid var(--border);border-radius:10px;padding:.5rem}
-    .photos{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.4rem}
-    .photos img{width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
-    .chip{display:inline-flex;align-items:center;gap:.4rem;background:var(--chip);border:1px solid var(--border);padding:.25rem .5rem;border-radius:999px;margin-left:auto}
-    .muted{color:#6b7280}
+    * { box-sizing:border-box }
+    html, body { height:100% }
+    body {
+      margin:0;
+      background:var(--bg);
+      color:var(--text);
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+    }
+
+    header {
+      position:sticky; top:0;
+      background:#fff;
+      border-bottom:3px solid var(--brand);
+      z-index:10;
+    }
+    .hi { max-width:1200px; margin:0 auto; display:flex; gap:.6rem; align-items:center; padding:.6rem .8rem; }
+    .logo { display:flex; align-items:center; gap:.6rem; }
+    .logo img { height:28px; border-radius:6px; background:#fff; }
+    .brand { font-weight:700; color:var(--brand) }
+
+    main { max-width:1200px; margin:0 auto; padding:1rem; }
+    .row { display:flex; gap:.5rem; align-items:center; }
+    .spacer { flex:1 }
+    .status { color:#6b7280; font-size:.9rem }
+
+    .card {
+      border:1px solid var(--border);
+      background:#fff;
+      border-radius:14px;
+      padding:1rem;
+      margin:.6rem 0;
+    }
+    .btn {
+      background:var(--brand);
+      border:none;
+      color:#fff;
+      padding:.55rem .9rem;
+      border-radius:8px;
+      cursor:pointer;
+    }
+    .btn:disabled { opacity:.6; cursor:not-allowed }
+    .btn.accent { background:var(--accent); color:#111 }
+    .input {
+      border:1px solid var(--border);
+      background:#fff;
+      border-radius:10px;
+      padding:.55rem .65rem;
+      min-width:240px;
+    }
+    .small { font-size:.9rem; color:#6b7280 }
+
+    /* Accordion styles */
+    details.floor, details.room {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin: .5rem 0;
+      background: #fff;
+    }
+    details > summary {
+      cursor: pointer;
+      list-style: none;
+      padding: .8rem 1rem;
+      font-weight: 600;
+    }
+    details > summary::-webkit-details-marker { display: none; }
+    .floor > .body, .room > .body {
+      padding: .75rem 1rem 1rem;
+      border-top: 1px dashed var(--border);
+    }
+
+    /* Rooms grid inside a floor */
+    .grid-rooms {
+      display: grid;
+      grid-template-columns: repeat(1, minmax(0, 1fr));
+      gap: .75rem;
+    }
+    @media (min-width: 900px) {
+      .grid-rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
+    /* Task card */
+    .task {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .75rem;
+      margin: .5rem 0;
+      background: #fff;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: .75rem;
+      align-items: start;
+    }
+    .task .title { font-weight: 600; }
+    .task .notes {
+      grid-column: 1 / -1;
+      width: 100%;
+      min-height: 70px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: .5rem .6rem;
+      resize: vertical;
+    }
+    .task .photos { grid-column: 1 / -1; }
+    .photos .thumbs { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.4rem; }
+    .thumbs img { width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid var(--border); background:#f8fafc; }
+    .photos input[type="file"] { display:block; margin:.3rem 0 .2rem; }
+
+    /* Auth/login box */
+    #auth-box .row { gap:.4rem }
   </style>
 </head>
 <body>
-
   <header>
     <div class="hi">
       <div class="logo">
-        <img src="/mpj-logo.png" alt="logo"/>
+        <img src="/mpj-logo.png" alt="logo" />
         <span class="brand">MPJ Tracker</span>
       </div>
-      <span id="status" class="status">Signed out</span>
+      <div class="spacer"></div>
+      <div id="status" class="status">Signed out</div>
+      <button id="logout-btn" class="btn accent" style="display:none;">Log out</button>
     </div>
   </header>
 
   <main>
-    <!-- Auth box -->
-    <div id="auth-box" class="card" style="display:none">
+
+    <!-- Auth (shown when logged OUT) -->
+    <div id="auth-box" class="card" style="display:none;">
       <h2>Login / Sign Up</h2>
-      <p class="muted">Use your email + password to sign in. New users can sign up on the same form.</p>
+      <p class="small">Use your email + password to sign in. New users can sign up on the same form.</p>
       <div class="row">
-        <input id="email" class="input" type="email" placeholder="Enter your email"/>
-        <input id="password" class="input" type="password" placeholder="Enter your password"/>
+        <input id="email" class="input" type="email" placeholder="Enter your email" />
+        <input id="password" class="input" type="password" placeholder="Enter your password" />
         <button id="signup-btn" class="btn">Sign Up</button>
-        <button id="login-btn" class="btn secondary">Log In</button>
+        <button id="login-btn" class="btn">Log In</button>
       </div>
     </div>
 
-    <!-- Project box -->
-    <div id="project-box" class="card" style="display:none">
-      <h2>Project</h2>
+    <!-- Project (shown when logged IN, before rooms) -->
+    <div id="project-box" class="card" style="display:none;">
+      <h3>Project</h3>
       <div class="row">
-        <input id="project-name" class="input" placeholder="Project name"/>
-        <input id="project-address" class="input" placeholder="Site address (optional)"/>
-        <button id="use-project" class="btn">Use / Create Project</button>
-        <span id="sync" class="chip">Connecting…</span>
-        <button id="logout" class="btn secondary" style="margin-left:auto">Log out</button>
+        <input id="project-name" class="input" placeholder="Project name" />
+        <input id="project-address" class="input" placeholder="Site address (optional)" />
+        <button id="use-project" class="btn accent">Use / Create Project</button>
       </div>
+      <p class="small">Tip: Re-use the same name to open it again later.</p>
     </div>
 
-    <!-- Rooms grid -->
-    <div id="rooms" class="grid"></div>
+    <!-- Rooms + Tasks accordion -->
+    <div id="rooms"></div>
+
   </main>
 
   <!-- ========= APP SCRIPT (no HTML comments inside) ========= -->
   <script>
   (function () {
-    // 1) Supabase client
-    const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co"; // 
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4"; // 
+    /* 1) Supabase client */
+    const SUPABASE_URL = 'https://zpnqruthpknncpiiztxf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4';
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // 2) Refs
-    const statusEl = document.getElementById('status');
+    /* 2) DOM refs */
     const authBox = document.getElementById('auth-box');
     const projectBox = document.getElementById('project-box');
     const roomsEl = document.getElementById('rooms');
+    const statusEl = document.getElementById('status');
+    const logoutBtn = document.getElementById('logout-btn');
 
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const signupBtn = document.getElementById('signup-btn');
     const loginBtn = document.getElementById('login-btn');
-    const logoutBtn = document.getElementById('logout');
 
     const projectNameInput = document.getElementById('project-name');
-    const projectAddrInput = document.getElementById('project-address');
+    const projectAddressInput = document.getElementById('project-address');
     const useProjectBtn = document.getElementById('use-project');
-    const syncBadge = document.getElementById('sync');
 
+    /* 3) Global state */
     let session = null;
-    let currentProject = null;
+    let currentProjectId = null;
 
-    // 3) Default rooms (seed list)
-    const DEFAULT_ROOMS = [
-      ['Second floor','Lobby'],
-      ['Second floor','Bedroom 1'],
-      ['Second floor','Bedroom 1 ensuite'],
-      ['Second floor','Bedroom 1 dresser'],
-      ['Second floor','Bedroom 2'],
-      ['Second floor','Bedroom 2 ensuite'],
-      ['Second floor','Bedroom 2 dresser'],
-      ['Second floor','Rod office'],
-      ['Second floor','Sheila office'],
+    /* 4) Helpers */
+    const esc = (s='') =>
+      String(s).replaceAll('&','&amp;').replaceAll('<','&lt;')
+               .replaceAll('>','&gt;').replaceAll('"','&quot;')
+               .replaceAll("'","&#39;");
 
-      ['First floor','Lobby'],
-      ['First floor','Bedroom 3'],
-      ['First floor','Bedroom 3 ensuite'],
-      ['First floor','Bedroom 4'],
-      ['First floor','Bedroom 4 ensuite'],
-      ['First floor','Bedroom 5'],
-      ['First floor','Bedroom 5 ensuite'],
-      ['First floor','Bedroom 6'],
-      ['First floor','Bedroom 6 ensuite'],
-
-      ['Ground floor','Lobby'],
-      ['Ground floor','Living room'],
-      ['Ground floor','Dining room'],
-      ['Ground floor','Kitchen'],
-      ['Ground floor','WC'],
-      ['Ground floor','Store'],
-      ['Ground floor','Anex kitchenette'],
-      ['Ground floor','Anex ensuite'],
-      ['Ground floor','Anex Bedroom'],
-
-      ['Basement','Lobby'],
-      ['Basement','Gym'],
-      ['Basement','Wine room'],
-      ['Basement','Safe room'],
-      ['Basement','Treatment room'],
-      ['Basement','Treatment room 2'],
-      ['Basement','Steam room'],
-      ['Basement','Utility room'],
-      ['Basement','WC'],
-      ['Basement','Plant room'],
-      ['Basement','Bar'],
-      ['Basement','Cinema'],
-
-      ['Other','Garage']
-    ];
-
-    // 4) Default task names
-    const DEFAULT_TASKS = [
-      'Measure & survey',
-      'First fix',
-      'Second fix',
-      'Seal & clean',
-      'Snagging',
-      'Sign off'
-    ];
-
-    function setSync(txt){ syncBadge.textContent = txt; }
-
-    // 5) AUTH: show/hide boxes and status
-    function render() {
-      if (session) {
-        statusEl.textContent = 'Signed in';
-        authBox.style.display = 'none';
-        projectBox.style.display = 'block';
-        logoutBtn.style.display = 'inline-flex';
-      } else {
-        statusEl.textContent = 'Signed out';
-        authBox.style.display = 'block';
-        projectBox.style.display = 'none';
-        roomsEl.innerHTML = '';
-      }
-    }
-
-    // on auth changes
-    sb.auth.onAuthStateChange((_event, s) => { session = s?.session ?? s; render(); });
-    // on first load
-    (async () => { const { data } = await sb.auth.getSession(); session = data.session; render(); })();
-
-    // 6) Email/password auth buttons
-    if (signupBtn) signupBtn.addEventListener('click', async () => {
-      const email = (emailInput.value || '').trim();
-      const password = passwordInput.value || '';
-      if (!email || !password) return alert('Please enter email and password');
-      const { error } = await sb.auth.signUp({ email, password });
-      if (error) return alert('Sign up failed: '+error.message);
-      alert('Sign up successful. Check your email if confirmations are enabled.');
-    });
-
-    if (loginBtn) loginBtn.addEventListener('click', async () => {
-      const email = (emailInput.value || '').trim();
-      const password = passwordInput.value || '';
-      if (!email || !password) return alert('Please enter email and password');
-      const { error } = await sb.auth.signInWithPassword({ email, password });
-      if (error) return alert('Login failed: '+error.message);
-    });
-
-    if (logoutBtn) logoutBtn.addEventListener('click', async () => {
-      const { error } = await sb.auth.signOut();
-      if (error) return alert('Logout error: '+error.message);
-    });
-
-    // 7) Ensure project exists, seed rooms, then load UI
-    async function ensureProject(name, siteAddress) {
-      if (!session?.user) throw new Error('Not signed in');
-      setSync('Saving…');
-
-      // upsert project by (user_id, name)
-      const { data: existing, error: selErr } = await sb
-        .from('projects')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .eq('name', name)
-        .maybeSingle();
-
-      let projectId = existing?.id;
-      if (!projectId) {
-        const { data: ins, error: insErr } = await sb
-          .from('projects')
-          .insert({ name, site_address: siteAddress || null, user_id: session.user.id })
-          .select('id')
-          .single();
-        if (insErr) throw insErr;
-        projectId = ins.id;
-      } else {
-        // update address if changed
-        await sb.from('projects').update({ site_address: siteAddress || null }).eq('id', projectId);
-      }
-
-      // seed rooms if none yet
-      const { data: roomCount, error: cntErr } = await sb
-        .from('rooms')
-        .select('id', { count: 'exact', head: true })
-        .eq('project_id', projectId);
-      if (cntErr) throw cntErr;
-
-      if ((roomCount?.length ?? 0) === 0) {
-        const rows = DEFAULT_ROOMS.map(([floor, name]) => ({
-          project_id: projectId, floor_name: floor, room_name: name
-        }));
-        const { error: rErr } = await sb.from('rooms').insert(rows);
-        if (rErr) throw rErr;
-      }
-
-      // store and load UI
-      currentProject = { id: projectId, name };
-      setSync('Synced');
-      await loadRooms(projectId);
-    }
-
-    // 8) Load rooms and render cards; seed tasks per room if missing
-    async function loadRooms(projectId) {
+    function showAuthUI() {
+      authBox.style.display = 'block';
+      projectBox.style.display = 'none';
       roomsEl.innerHTML = '';
-      const { data: rooms, error } = await sb
+      statusEl.textContent = 'Signed out';
+      logoutBtn.style.display = 'none';
+    }
+    function showProjectPicker() {
+      authBox.style.display = 'none';
+      projectBox.style.display = 'block';
+      roomsEl.innerHTML = '';
+      statusEl.textContent = 'Signed in';
+      logoutBtn.style.display = 'inline-block';
+    }
+
+    /* 5) Auth wiring */
+    if (signupBtn) {
+      signupBtn.addEventListener('click', async () => {
+        const email = (emailInput.value || '').trim();
+        const password = passwordInput.value || '';
+        if (!email || !password) return alert('Please enter email and password');
+
+        const { error } = await sb.auth.signUp({ email, password });
+        if (error) return alert('Sign up failed: ' + error.message);
+        alert('Sign up successful. Check your email to confirm (if required).');
+      });
+    }
+
+    if (loginBtn) {
+      loginBtn.addEventListener('click', async () => {
+        const email = (emailInput.value || '').trim();
+        const password = passwordInput.value || '';
+        if (!email || !password) return alert('Please enter email and password');
+
+        const { error } = await sb.auth.signInWithPassword({ email, password });
+        if (error) return alert('Log in failed: ' + error.message);
+        // onAuthStateChange will handle the rest
+      });
+    }
+
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', async () => {
+        const { error } = await sb.auth.signOut();
+        if (error) return alert('Logout error: ' + error.message);
+      });
+    }
+
+    sb.auth.onAuthStateChange((_evt, s) => {
+      session = s?.session ?? s;
+      if (session) showProjectPicker();
+      else showAuthUI();
+    });
+
+    /* 6) On first load, pick up session */
+    (async () => {
+      const { data } = await sb.auth.getSession();
+      session = data.session;
+      if (session) showProjectPicker();
+      else showAuthUI();
+    })();
+
+    /* 7) Project selection / creation (uses your seed_full_project function) */
+    if (useProjectBtn) {
+      useProjectBtn.addEventListener('click', async () => {
+        const name = (projectNameInput.value || '').trim();
+        const addr = projectAddressInput.value || '';
+        if (!name) return alert('Please enter a project name.');
+
+        useProjectBtn.disabled = true;
+
+        // Try to find existing by exact name for this user
+        const { data: existing, error: findErr } = await sb
+          .from('projects')
+          .select('id, name, user_id')
+          .eq('name', name)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (findErr) {
+          useProjectBtn.disabled = false;
+          return alert('Lookup failed: ' + findErr.message);
+        }
+
+        if (existing && existing.length) {
+          currentProjectId = existing[0].id;
+        } else {
+          // Create project + all rooms via RPC
+          const { data: newId, error: rpcErr } = await sb
+            .rpc('seed_full_project', { p_name: name, p_site: addr });
+
+          if (rpcErr) {
+            useProjectBtn.disabled = false;
+            return alert('Create failed: ' + rpcErr.message);
+          }
+          currentProjectId = newId; // function returns uuid
+        }
+
+        await renderFloorsAndRooms(currentProjectId);
+        useProjectBtn.disabled = false;
+        projectBox.style.display = 'none'; // hide picker after load
+      });
+    }
+
+    /* 8) Accordion render: floors → rooms → tasks (+ photo upload) */
+    async function renderFloorsAndRooms(projectId) {
+      roomsEl.innerHTML = 'Loading…';
+
+      // Load rooms
+      const { data: rooms, error: roomsErr } = await sb
         .from('rooms')
         .select('id, floor_name, room_name')
         .eq('project_id', projectId)
         .order('floor_name', { ascending: true })
         .order('room_name', { ascending: true });
-      if (error) { alert('Load rooms error: '+error.message); return; }
 
-      for (const room of rooms) {
-        const card = document.createElement('div');
-        card.className = 'card room';
-        card.innerHTML = `
-          <h3>${room.floor_name} — ${room.room_name}</h3>
-          <div class="tasks"></div>
-        `;
-        roomsEl.appendChild(card);
+      if (roomsErr) {
+        roomsEl.innerHTML = `<div class="card">Rooms load error: ${esc(roomsErr.message)}</div>`;
+        return;
+      }
+      if (!rooms?.length) {
+        roomsEl.innerHTML = `<div class="card">No rooms for this project.</div>`;
+        return;
+      }
 
-        // Load or seed tasks
-        const tasksWrap = card.querySelector('.tasks');
-        let { data: tasks, error: tErr } = await sb
-          .from('tasks')
-          .select('id, description, done, notes')
-          .eq('room_id', room.id)
-          .order('description', { ascending: true });
-        if (tErr) { tasksWrap.textContent = 'Tasks error: '+tErr.message; continue; }
+      // Load tasks for all rooms
+      const roomIds = rooms.map(r => r.id);
+      const { data: tasks, error: tasksErr } = await sb
+        .from('tasks')
+        .select('id, room_id, description, done, notes')
+        .in('room_id', roomIds)
+        .order('description', { ascending: true });
 
-        if (!tasks || tasks.length === 0) {
-          const seed = DEFAULT_TASKS.map(d => ({ room_id: room.id, description: d, done: false, notes: null }));
-          const { error: seedErr } = await sb.from('tasks').insert(seed);
-          if (seedErr) { tasksWrap.textContent = 'Seed error: '+seedErr.message; continue; }
-          const res = await sb
-            .from('tasks')
-            .select('id, description, done, notes')
-            .eq('room_id', room.id)
-            .order('description', { ascending: true });
-          tasks = res.data || [];
-        }
+      if (tasksErr) {
+        roomsEl.innerHTML = `<div class="card">Tasks load error: ${esc(tasksErr.message)}</div>`;
+        return;
+      }
 
-        // Render each task row
-        for (const task of tasks) {
-          const row = document.createElement('div');
-          row.className = 'card';
-          row.style.marginTop = '.5rem';
-          row.innerHTML = `
-            <div class="task">
-              <input type="checkbox" data-task="${task.id}" ${task.done ? 'checked' : ''}/>
-              <div><strong>${task.description}</strong></div>
-              <span class="chip muted">${task.done ? 'Done' : 'To-do'}</span>
-            </div>
-            <div style="margin-top:.35rem">
-              <label class="muted" style="font-size:.85rem">Notes</label>
-              <textarea class="note" data-note="${task.id}">${task.notes ?? ''}</textarea>
-            </div>
-            <div style="margin-top:.35rem" class="row">
-              <input type="file" accept="image/*" capture="environment" data-upload="${task.id}"/>
-              <span class="muted" style="font-size:.85rem">Add photos</span>
-            </div>
-            <div class="photos" data-photos="${task.id}"></div>
+      // Group tasks by room
+      const tasksByRoom = new Map();
+      for (const t of tasks) {
+        if (!tasksByRoom.has(t.room_id)) tasksByRoom.set(t.room_id, []);
+        tasksByRoom.get(t.room_id).push(t);
+      }
+
+      // Group rooms by floor
+      const floors = new Map();
+      for (const r of rooms) {
+        if (!floors.has(r.floor_name)) floors.set(r.floor_name, []);
+        floors.get(r.floor_name).push(r);
+      }
+
+      // Build HTML
+      const htmlFloors = [];
+      for (const [floorName, floorRooms] of floors) {
+        const htmlRooms = floorRooms.map(room => {
+          const rTasks = tasksByRoom.get(room.id) || [];
+          const htmlTasks = rTasks.map(t => taskHtml(t, room.id)).join('');
+
+          return `
+            <details class="room" data-room-id="${room.id}">
+              <summary>${esc(room.room_name)}</summary>
+              <div class="body">
+                ${htmlTasks || '<div class="small">No tasks yet for this room.</div>'}
+              </div>
+            </details>
           `;
-          tasksWrap.appendChild(row);
+        }).join('');
 
-          // Hook up checkbox
-          row.querySelector('input[type="checkbox"]').addEventListener('change', async (e) => {
-            const done = e.target.checked;
-            row.querySelector('.chip').textContent = done ? 'Done' : 'To-do';
-            await sb.from('tasks').update({ done }).eq('id', task.id);
-          });
+        htmlFloors.push(`
+          <details class="floor">
+            <summary>${esc(floorName)}</summary>
+            <div class="body">
+              <div class="grid-rooms">
+                ${htmlRooms}
+              </div>
+            </div>
+          </details>
+        `);
+      }
 
-          // Hook up notes (save on blur)
-          row.querySelector('textarea').addEventListener('blur', async (e) => {
-            const notes = e.target.value;
-            await sb.from('tasks').update({ notes }).eq('id', task.id);
-          });
+      roomsEl.innerHTML = htmlFloors.join('');
 
-          // Photo upload
-          row.querySelector('input[type="file"]').addEventListener('change', async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const path = `task-${task.id}/${Date.now()}-${file.name.replace(/\s+/g,'_')}`;
-            const { error: upErr } = await sb.storage.from('photos').upload(path, file, { upsert:false });
-            if (upErr) { alert('Upload error: '+upErr.message); return; }
-            await showPhotos(task.id, row.querySelector('.photos'));
-            e.target.value = '';
-          });
+      // After render: populate thumbnails for each task
+      await refreshAllThumbnails(roomsEl);
+    }
 
-          // Initial photos
-          await showPhotos(task.id, row.querySelector('.photos'));
+    function taskHtml(t, roomId) {
+      const cbId = `tcb_${t.id}`;
+      const ntId = `tnt_${t.id}`;
+      const fiId = `tfile_${t.id}`;
+      const phWrap = `photos_${t.id}`;
+      return `
+        <div class="task" data-task-id="${t.id}" data-room-id="${roomId}">
+          <div><input id="${cbId}" type="checkbox" ${t.done ? 'checked' : ''} /></div>
+          <div class="title">${esc(t.description)}</div>
+          <div class="status">${t.done ? 'Done' : 'To-do'}</div>
+
+          <textarea id="${ntId}" class="notes" placeholder="Notes">${t.notes ?? ''}</textarea>
+
+          <div class="photos">
+            <label class="small">Add photos</label>
+            <input id="${fiId}" type="file" accept="image/*" capture="environment" multiple />
+            <div id="${phWrap}" class="thumbs"></div>
+          </div>
+        </div>
+      `;
+    }
+
+    /* 9) Event wiring for tasks: checkbox + notes + photos (delegated) */
+    roomsEl.addEventListener('change', async (e) => {
+      const el = e.target;
+      // done checkbox
+      if (el.tagName === 'INPUT' && el.type === 'checkbox') {
+        const taskEl = el.closest('.task');
+        if (!taskEl) return;
+        const taskId = taskEl.dataset.taskId;
+
+        // optimistic
+        taskEl.querySelector('.status').textContent = el.checked ? 'Done' : 'To-do';
+
+        const { error } = await sb.from('tasks').update({ done: !!el.checked }).eq('id', taskId).single();
+        if (error) {
+          el.checked = !el.checked;
+          taskEl.querySelector('.status').textContent = el.checked ? 'Done' : 'To-do';
+          alert('Save failed: ' + error.message);
         }
       }
-    }
 
-    // 9) List photos for a task id
-    async function showPhotos(taskId, container) {
-      container.innerHTML = '';
-      // list with a prefix (folder per task)
-      const { data: items, error } = await sb.storage.from('photos').list(`task-${taskId}`, { limit: 100, sortBy: { column: 'created_at', order: 'desc' } });
-      if (error) { container.textContent = 'Photos error: '+error.message; return; }
-      if (!items || items.length === 0) { container.innerHTML = '<span class="muted" style="font-size:.85rem">No photos</span>'; return; }
-      for (const it of items) {
-        const { data } = sb.storage.from('photos').getPublicUrl(`task-${taskId}/${it.name}`);
-        const img = document.createElement('img');
-        img.loading = 'lazy';
-        img.src = data.publicUrl;
-        container.appendChild(img);
-      }
-    }
+      // file input (photos)
+      if (el.tagName === 'INPUT' && el.type === 'file') {
+        const taskEl = el.closest('.task');
+        if (!taskEl) return;
+        const taskId = taskEl.dataset.taskId;
+        const files = Array.from(el.files || []);
+        if (!files.length) return;
 
-    // 10) Project button
-    if (useProjectBtn) useProjectBtn.addEventListener('click', async () => {
-      const name = (projectNameInput.value || '').trim();
-      if (!name) return alert('Please enter a project name');
-      try {
-        await ensureProject(name, projectAddrInput.value || null);
-      } catch (e) {
-        alert('Project error: '+(e.message || e));
+        // upload each
+        Promise.all(files.map(f => uploadPhoto(taskId, f)))
+          .then(() => refreshThumbnailsForTask(taskId, taskEl))
+          .catch(err => alert('Upload failed: ' + err.message));
       }
     });
 
+    // Save notes on blur (use capture to catch textarea blur)
+    roomsEl.addEventListener('blur', async (e) => {
+      const el = e.target;
+      if (!(el.tagName === 'TEXTAREA' && el.classList.contains('notes'))) return;
+      const taskEl = el.closest('.task');
+      if (!taskEl) return;
+      const taskId = taskEl.dataset.taskId;
+      const { error } = await sb.from('tasks').update({ notes: el.value }).eq('id', taskId).single();
+      if (error) alert('Saving notes failed: ' + error.message);
+    }, true);
+
+    /* 10) Storage helpers: upload + list (photos bucket) */
+    async function uploadPhoto(taskId, file) {
+      const path = `${taskId}/${Date.now()}_${Math.random().toString(36).slice(2)}_${file.name}`;
+      const { error } = await sb.storage.from('photos').upload(path, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type || 'image/jpeg'
+      });
+      if (error) throw error;
+    }
+
+    async function listPhotos(taskId) {
+      // List all objects under prefix taskId/
+      const { data, error } = await sb.storage.from('photos').list(taskId, { limit: 100 });
+      if (error) throw error;
+      return data || [];
+    }
+
+    function publicUrl(path) {
+      const { data } = sb.storage.from('photos').getPublicUrl(path);
+      return data.publicUrl;
+    }
+
+    async function refreshThumbnailsForTask(taskId, taskEl) {
+      const wrap = taskEl.querySelector(`#photos_${CSS.escape(taskId)}`);
+      if (!wrap) return;
+      wrap.innerHTML = '<span class="small">Loading photos…</span>';
+      try {
+        const files = await listPhotos(taskId);
+        if (!files.length) { wrap.innerHTML = '<span class="small">No photos</span>'; return; }
+        wrap.innerHTML = files.map(f => {
+          const url = publicUrl(`${taskId}/${f.name}`);
+          return `<a href="${url}" target="_blank" rel="noopener"><img loading="lazy" src="${url}" alt=""></a>`;
+        }).join('');
+      } catch (err) {
+        wrap.innerHTML = `<span class="small">Photos error: ${esc(err.message)}</span>`;
+      }
+    }
+
+    async function refreshAllThumbnails(container) {
+      const taskEls = Array.from(container.querySelectorAll('.task'));
+      for (const t of taskEls) {
+        const taskId = t.dataset.taskId;
+        await refreshThumbnailsForTask(taskId, t);
+      }
+    }
+
+    /* Expose render for reuse if you navigate back to a project */
+    window.renderFloorsAndRooms = renderFloorsAndRooms;
   })();
   </script>
 </body>
