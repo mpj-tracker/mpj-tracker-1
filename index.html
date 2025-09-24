@@ -5,142 +5,83 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MPJ Tracker</title>
 
-  <!-- PWA/branding bits (optional but nice) -->
   <meta name="theme-color" content="#0b5f3b" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png" />
-  <link rel="manifest" href="/manifest.webmanifest?v=2" />
+  <link rel="manifest" href="/manifest.webmanifest?v=4" />
 
-  <!-- Supabase (UMD) -->
   <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
   <style>
     :root {
-      --brand:#0b5f3b;
-      --accent:#f0b323;
-      --bg:#f7faf9;
-      --border:#e3e6eb;
-      --muted:#eef3f1;
-      --text:#111827;
+      --brand:#0b5f3b; --accent:#f0b323; --bg:#f7faf9; --border:#e3e6eb; --muted:#eef3f1; --text:#111827;
+      /* Trades */
+      --t-Joiners:#15803d; --t-Plumbers:#1d4ed8; --t-Electrical:#dc2626; --t-Plasterer:#7c3aed;
+      --t-Decorators:#f59e0b; --t-Tiling:#0ea5a4; --t-Specialist:#374151; --t-General:#6b7280;
     }
-    * { box-sizing:border-box }
-    html, body { height:100% }
-    body {
-      margin:0;
-      background:var(--bg);
-      color:var(--text);
-      font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
-    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
 
-    header {
-      position:sticky; top:0;
-      background:#fff;
-      border-bottom:3px solid var(--brand);
-      z-index:10;
-    }
-    .hi { max-width:1200px; margin:0 auto; display:flex; gap:.6rem; align-items:center; padding:.6rem .8rem; }
-    .logo { display:flex; align-items:center; gap:.6rem; }
-    .logo img { height:28px; border-radius:6px; background:#fff; }
-    .brand { font-weight:700; color:var(--brand) }
+    header{position:sticky;top:0;background:#fff;border-bottom:3px solid var(--brand);z-index:10}
+    .hi{max-width:1200px;margin:0 auto;display:flex;gap:.6rem;align-items:center;padding:.6rem .8rem}
+    .logo{display:flex;align-items:center;gap:.6rem}
+    .logo img{height:28px;border-radius:6px;background:#fff}
+    .brand{font-weight:700;color:var(--brand)}
+    .status{color:#6b7280;font-size:.9rem}
+    .spacer{flex:1}
 
-    main { max-width:1200px; margin:0 auto; padding:1rem; }
-    .row { display:flex; gap:.5rem; align-items:center; }
-    .spacer { flex:1 }
-    .status { color:#6b7280; font-size:.9rem }
+    main{max-width:1200px;margin:0 auto;padding:1rem}
+    .card{border:1px solid var(--border);background:#fff;border-radius:14px;padding:1rem;margin:.6rem 0}
+    .btn{background:var(--brand);border:none;color:#fff;padding:.55rem .9rem;border-radius:8px;cursor:pointer}
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .btn.accent{background:var(--accent);color:#111}
+    .input{border:1px solid var(--border);background:#fff;border-radius:10px;padding:.55rem .65rem;min-width:240px}
+    .row{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+    .small{font-size:.9rem;color:#6b7280}
 
-    .card {
-      border:1px solid var(--border);
-      background:#fff;
-      border-radius:14px;
-      padding:1rem;
-      margin:.6rem 0;
-    }
-    .btn {
-      background:var(--brand);
-      border:none;
-      color:#fff;
-      padding:.55rem .9rem;
-      border-radius:8px;
-      cursor:pointer;
-    }
-    .btn:disabled { opacity:.6; cursor:not-allowed }
-    .btn.accent { background:var(--accent); color:#111 }
-    .input {
-      border:1px solid var(--border);
-      background:#fff;
-      border-radius:10px;
-      padding:.55rem .65rem;
-      min-width:240px;
-    }
-    .small { font-size:.9rem; color:#6b7280 }
+    /* Accordions */
+    details.floor,details.room,details.trade{border:1px solid var(--border);border-radius:10px;margin:.5rem 0;background:#fff}
+    details>summary{cursor:pointer;list-style:none;padding:.8rem 1rem;font-weight:600;display:flex;align-items:center;gap:.6rem}
+    details>summary::-webkit-details-marker{display:none}
+    .body{padding:.75rem 1rem 1rem;border-top:1px dashed var(--border)}
 
-    /* Accordion styles */
-    details.floor, details.room {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      margin: .5rem 0;
-      background: #fff;
-    }
-    details > summary {
-      cursor: pointer;
-      list-style: none;
-      padding: .8rem 1rem;
-      font-weight: 600;
-    }
-    details > summary::-webkit-details-marker { display: none; }
-    .floor > .body, .room > .body {
-      padding: .75rem 1rem 1rem;
-      border-top: 1px dashed var(--border);
-    }
+    .grid-rooms{display:grid;grid-template-columns:repeat(1,minmax(0,1fr));gap:.75rem}
+    @media(min-width:900px){.grid-rooms{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
-    /* Rooms grid inside a floor */
-    .grid-rooms {
-      display: grid;
-      grid-template-columns: repeat(1, minmax(0, 1fr));
-      gap: .75rem;
-    }
-    @media (min-width: 900px) {
-      .grid-rooms { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
+    /* Tasks */
+    .task{border:1px solid var(--border);border-radius:10px;padding:.75rem;margin:.5rem 0;background:#fff;
+          display:grid;grid-template-columns:auto 1fr auto;gap:.75rem;align-items:start}
+    .task .title{font-weight:600}
+    .task .notes{grid-column:1/-1;width:100%;min-height:70px;border-radius:8px;border:1px solid var(--border);
+                 padding:.5rem .6rem;resize:vertical}
+    .task .photos{grid-column:1/-1}
+    .photos .thumbs{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.4rem}
+    .thumbs img{width:80px;height:80px;object-fit:cover;border-radius:8px;border:1px solid var(--border);background:#f8fafc}
+    .photos input[type="file"]{display:block;margin:.3rem 0 .2rem}
 
-    /* Task card */
-    .task {
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: .75rem;
-      margin: .5rem 0;
-      background: #fff;
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: .75rem;
-      align-items: start;
-    }
-    .task .title { font-weight: 600; }
-    .task .notes {
-      grid-column: 1 / -1;
-      width: 100%;
-      min-height: 70px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      padding: .5rem .6rem;
-      resize: vertical;
-    }
-    .task .photos { grid-column: 1 / -1; }
-    .photos .thumbs { display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.4rem; }
-    .thumbs img { width:80px; height:80px; object-fit:cover; border-radius:8px; border:1px solid var(--border); background:#f8fafc; }
-    .photos input[type="file"] { display:block; margin:.3rem 0 .2rem; }
+    /* Trade colours */
+    .trade[data-trade="Joiners"]>summary{color:var(--t-Joiners)}
+    .trade[data-trade="Plumbers"]>summary{color:var(--t-Plumbers)}
+    .trade[data-trade="Electrical"]>summary{color:var(--t-Electrical)}
+    .trade[data-trade="Plasterer"]>summary{color:var(--t-Plasterer)}
+    .trade[data-trade="Decorators"]>summary{color:var(--t-Decorators)}
+    .trade[data-trade="Tiling"]>summary{color:var(--t-Tiling)}
+    .trade[data-trade="Specialist"]>summary{color:var(--t-Specialist)}
+    .trade[data-trade="General"]>summary{color:var(--t-General)}
 
-    /* Auth/login box */
-    #auth-box .row { gap:.4rem }
+    /* Progress bars */
+    .meter{flex:1;height:8px;background:#f1f5f9;border-radius:999px;overflow:hidden;position:relative}
+    .meter > span{display:block;height:100%;background:linear-gradient(90deg,var(--brand),#22c55e);width:0%}
+    .pct{font-size:.85rem;color:#374151;min-width:3ch;text-align:right}
+    .chip{background:#f9fafb;border:1px solid var(--border);padding:.2rem .5rem;border-radius:999px;font-size:.8rem}
+    .room-summary{display:flex;align-items:center;gap:.6rem;flex:1}
   </style>
 </head>
 <body>
   <header>
     <div class="hi">
-      <div class="logo">
-        <img src="/mpj-logo.png" alt="logo" />
-        <span class="brand">MPJ Tracker</span>
-      </div>
+      <div class="logo"><img src="/mpj-logo.png" alt="logo"/><span class="brand">MPJ Tracker</span></div>
       <div class="spacer"></div>
       <div id="status" class="status">Signed out</div>
       <button id="logout-btn" class="btn accent" style="display:none;">Log out</button>
@@ -148,373 +89,322 @@
   </header>
 
   <main>
-
-    <!-- Auth (shown when logged OUT) -->
+    <!-- Auth -->
     <div id="auth-box" class="card" style="display:none;">
       <h2>Login / Sign Up</h2>
-      <p class="small">Use your email + password to sign in. New users can sign up on the same form.</p>
       <div class="row">
-        <input id="email" class="input" type="email" placeholder="Enter your email" />
-        <input id="password" class="input" type="password" placeholder="Enter your password" />
+        <input id="email" class="input" type="email" placeholder="Email"/>
+        <input id="password" class="input" type="password" placeholder="Password"/>
         <button id="signup-btn" class="btn">Sign Up</button>
         <button id="login-btn" class="btn">Log In</button>
       </div>
     </div>
 
-    <!-- Project (shown when logged IN, before rooms) -->
+    <!-- Project -->
     <div id="project-box" class="card" style="display:none;">
       <h3>Project</h3>
       <div class="row">
-        <input id="project-name" class="input" placeholder="Project name" />
-        <input id="project-address" class="input" placeholder="Site address (optional)" />
+        <input id="project-name" class="input" placeholder="Project name"/>
+        <input id="project-address" class="input" placeholder="Site address (optional)"/>
         <button id="use-project" class="btn accent">Use / Create Project</button>
       </div>
-      <p class="small">Tip: Re-use the same name to open it again later.</p>
+      <p class="small">Tip: re-use the same name to open it again later.</p>
     </div>
 
-    <!-- Rooms + Tasks accordion -->
+    <!-- Floors / Rooms / Trades / Tasks -->
     <div id="rooms"></div>
-
   </main>
 
-  <!-- ========= APP SCRIPT (no HTML comments inside) ========= -->
-  <script>
-  (function () {
-    /* 1) Supabase client */
-    const SUPABASE_URL = 'https://zpnqruthpknncpiiztxf.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4';
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+<script>
+(function(){
+  const SUPABASE_URL='https://zpnqruthpknncpiiztxf.supabase.co';
+  const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4';
+  const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
-    /* 2) DOM refs */
-    const authBox = document.getElementById('auth-box');
-    const projectBox = document.getElementById('project-box');
-    const roomsEl = document.getElementById('rooms');
-    const statusEl = document.getElementById('status');
-    const logoutBtn = document.getElementById('logout-btn');
+  const authBox=document.getElementById('auth-box');
+  const projectBox=document.getElementById('project-box');
+  const roomsEl=document.getElementById('rooms');
+  const statusEl=document.getElementById('status');
+  const logoutBtn=document.getElementById('logout-btn');
 
-    const emailInput = document.getElementById('email');
-    const passwordInput = document.getElementById('password');
-    const signupBtn = document.getElementById('signup-btn');
-    const loginBtn = document.getElementById('login-btn');
+  const emailInput=document.getElementById('email');
+  const passwordInput=document.getElementById('password');
+  const signupBtn=document.getElementById('signup-btn');
+  const loginBtn=document.getElementById('login-btn');
 
-    const projectNameInput = document.getElementById('project-name');
-    const projectAddressInput = document.getElementById('project-address');
-    const useProjectBtn = document.getElementById('use-project');
+  const projectNameInput=document.getElementById('project-name');
+  const projectAddressInput=document.getElementById('project-address');
+  const useProjectBtn=document.getElementById('use-project');
 
-    /* 3) Global state */
-    let session = null;
-    let currentProjectId = null;
+  const FLOOR_ORDER=['Basement','Ground Floor','1st Floor','2nd Floor','Other'];
 
-    /* 4) Helpers */
-    const esc = (s='') =>
-      String(s).replaceAll('&','&amp;').replaceAll('<','&lt;')
-               .replaceAll('>','&gt;').replaceAll('"','&quot;')
-               .replaceAll("'","&#39;");
+  let session=null; let currentProjectId=null;
 
-    function showAuthUI() {
-      authBox.style.display = 'block';
-      projectBox.style.display = 'none';
-      roomsEl.innerHTML = '';
-      statusEl.textContent = 'Signed out';
-      logoutBtn.style.display = 'none';
-    }
-    function showProjectPicker() {
-      authBox.style.display = 'none';
-      projectBox.style.display = 'block';
-      roomsEl.innerHTML = '';
-      statusEl.textContent = 'Signed in';
-      logoutBtn.style.display = 'inline-block';
-    }
+  const esc=s=>String(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+                            .replaceAll('"','&quot;').replaceAll("'","&#39;");
+  const idSafe = s => s.replace(/[^a-z0-9]+/gi,'-').toLowerCase();
 
-    /* 5) Auth wiring */
-    if (signupBtn) {
-      signupBtn.addEventListener('click', async () => {
-        const email = (emailInput.value || '').trim();
-        const password = passwordInput.value || '';
-        if (!email || !password) return alert('Please enter email and password');
+  function showAuth(){authBox.style.display='block';projectBox.style.display='none';roomsEl.innerHTML='';statusEl.textContent='Signed out';logoutBtn.style.display='none'}
+  function showProject(){authBox.style.display='none';projectBox.style.display='block';roomsEl.innerHTML='';statusEl.textContent='Signed in';logoutBtn.style.display='inline-block'}
 
-        const { error } = await sb.auth.signUp({ email, password });
-        if (error) return alert('Sign up failed: ' + error.message);
-        alert('Sign up successful. Check your email to confirm (if required).');
-      });
-    }
+  signupBtn.addEventListener('click',async()=>{
+    const email=emailInput.value.trim(), pw=passwordInput.value;
+    if(!email||!pw)return alert('Enter email + password');
+    const {error}=await sb.auth.signUp({email,password:pw});
+    if(error)return alert(error.message);
+    alert('Check your email for confirmation (if required).');
+  });
 
-    if (loginBtn) {
-      loginBtn.addEventListener('click', async () => {
-        const email = (emailInput.value || '').trim();
-        const password = passwordInput.value || '';
-        if (!email || !password) return alert('Please enter email and password');
+  loginBtn.addEventListener('click',async()=>{
+    const email=emailInput.value.trim(), pw=passwordInput.value;
+    if(!email||!pw)return alert('Enter email + password');
+    const {error}=await sb.auth.signInWithPassword({email,password:pw});
+    if(error)alert(error.message);
+  });
 
-        const { error } = await sb.auth.signInWithPassword({ email, password });
-        if (error) return alert('Log in failed: ' + error.message);
-        // onAuthStateChange will handle the rest
-      });
+  logoutBtn.addEventListener('click',async()=>{await sb.auth.signOut()});
+
+  sb.auth.onAuthStateChange((_e,s)=>{session=s?.session??s;session?showProject():showAuth()});
+  (async()=>{const {data}=await sb.auth.getSession();session=data.session;session?showProject():showAuth()})();
+
+  useProjectBtn.addEventListener('click',async()=>{
+    const name=projectNameInput.value.trim(), addr=projectAddressInput.value;
+    if(!name)return alert('Enter a project name');
+    useProjectBtn.disabled=true;
+
+    const {data:existing,error:findErr}=await sb.from('projects').select('id').eq('name',name).order('created_at',{ascending:false}).limit(1);
+    if(findErr){useProjectBtn.disabled=false;return alert(findErr.message);}
+
+    if(existing?.length){currentProjectId=existing[0].id;}
+    else{
+      const {data:newId,error:rpcErr}=await sb.rpc('seed_full_project',{p_name:name,p_site:addr});
+      if(rpcErr){useProjectBtn.disabled=false;return alert(rpcErr.message);}
+      currentProjectId=newId;
     }
 
-    if (logoutBtn) {
-      logoutBtn.addEventListener('click', async () => {
-        const { error } = await sb.auth.signOut();
-        if (error) return alert('Logout error: ' + error.message);
-      });
-    }
+    const { error: seedErr } = await sb.rpc('seed_trade_tasks_for_project',{p_project_id:currentProjectId});
+    if(seedErr) console.warn('Trade seed:', seedErr.message);
 
-    sb.auth.onAuthStateChange((_evt, s) => {
-      session = s?.session ?? s;
-      if (session) showProjectPicker();
-      else showAuthUI();
+    await renderFloors(currentProjectId);
+    projectBox.style.display='none';
+    useProjectBtn.disabled=false;
+  });
+
+  async function renderFloors(pid){
+    roomsEl.innerHTML='Loading…';
+
+    const {data:rooms,error:rErr}=await sb
+      .from('rooms')
+      .select('id,floor_name,room_name')
+      .eq('project_id',pid);
+    if(rErr) return roomsEl.innerHTML=`<div class="card">Rooms error: ${esc(rErr.message)}</div>`;
+
+    const roomIds=rooms.map(r=>r.id);
+    const {data:tasks,error:tErr}=await sb
+      .from('tasks')
+      .select('id,room_id,description,done,notes,trade,phase')
+      .in('room_id',roomIds);
+    if(tErr) return roomsEl.innerHTML=`<div class="card">Tasks error: ${esc(tErr.message)}</div>`;
+
+    // Group
+    const tasksByRoom=new Map();
+    for(const t of tasks){ if(!tasksByRoom.has(t.room_id)) tasksByRoom.set(t.room_id,[]); tasksByRoom.get(t.room_id).push(t); }
+    const roomsByFloor=new Map();
+    for(const r of rooms){ if(!roomsByFloor.has(r.floor_name)) roomsByFloor.set(r.floor_name,[]); roomsByFloor.get(r.floor_name).push(r); }
+
+    // Order floors
+    const floorNames=Array.from(roomsByFloor.keys()).sort((a,b)=>{
+      const ia=FLOOR_ORDER.indexOf(a); const ib=FLOOR_ORDER.indexOf(b);
+      return (ia===-1?999:ia)-(ib===-1?999:ib);
     });
 
-    /* 6) On first load, pick up session */
-    (async () => {
-      const { data } = await sb.auth.getSession();
-      session = data.session;
-      if (session) showProjectPicker();
-      else showAuthUI();
-    })();
+    // Build HTML
+    const out=[];
+    for(const floorName of floorNames){
+      const floorId = `floor-${idSafe(floorName)}`;
+      // compute floor totals
+      let floorDone=0, floorTotal=0;
 
-    /* 7) Project selection / creation (uses your seed_full_project function) */
-    if (useProjectBtn) {
-      useProjectBtn.addEventListener('click', async () => {
-        const name = (projectNameInput.value || '').trim();
-        const addr = projectAddressInput.value || '';
-        if (!name) return alert('Please enter a project name.');
+      const roomHtml=(roomsByFloor.get(floorName)||[]).map(room=>{
+        const rTasks=tasksByRoom.get(room.id)||[];
+        const total=rTasks.length, done=rTasks.filter(x=>x.done).length;
+        floorDone += done; floorTotal += total;
 
-        useProjectBtn.disabled = true;
+        // group by trade
+        const byTrade=new Map();
+        for(const t of rTasks){ const k=t.trade||'General'; if(!byTrade.has(k)) byTrade.set(k,[]); byTrade.get(k).push(t); }
 
-        // Try to find existing by exact name for this user
-        const { data: existing, error: findErr } = await sb
-          .from('projects')
-          .select('id, name, user_id')
-          .eq('name', name)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
-        if (findErr) {
-          useProjectBtn.disabled = false;
-          return alert('Lookup failed: ' + findErr.message);
-        }
-
-        if (existing && existing.length) {
-          currentProjectId = existing[0].id;
-        } else {
-          // Create project + all rooms via RPC
-          const { data: newId, error: rpcErr } = await sb
-            .rpc('seed_full_project', { p_name: name, p_site: addr });
-
-          if (rpcErr) {
-            useProjectBtn.disabled = false;
-            return alert('Create failed: ' + rpcErr.message);
-          }
-          currentProjectId = newId; // function returns uuid
-        }
-
-        await renderFloorsAndRooms(currentProjectId);
-        useProjectBtn.disabled = false;
-        projectBox.style.display = 'none'; // hide picker after load
-      });
-    }
-
-    /* 8) Accordion render: floors → rooms → tasks (+ photo upload) */
-    async function renderFloorsAndRooms(projectId) {
-      roomsEl.innerHTML = 'Loading…';
-
-      // Load rooms
-      const { data: rooms, error: roomsErr } = await sb
-        .from('rooms')
-        .select('id, floor_name, room_name')
-        .eq('project_id', projectId)
-        .order('floor_name', { ascending: true })
-        .order('room_name', { ascending: true });
-
-      if (roomsErr) {
-        roomsEl.innerHTML = `<div class="card">Rooms load error: ${esc(roomsErr.message)}</div>`;
-        return;
-      }
-      if (!rooms?.length) {
-        roomsEl.innerHTML = `<div class="card">No rooms for this project.</div>`;
-        return;
-      }
-
-      // Load tasks for all rooms
-      const roomIds = rooms.map(r => r.id);
-      const { data: tasks, error: tasksErr } = await sb
-        .from('tasks')
-        .select('id, room_id, description, done, notes')
-        .in('room_id', roomIds)
-        .order('description', { ascending: true });
-
-      if (tasksErr) {
-        roomsEl.innerHTML = `<div class="card">Tasks load error: ${esc(tasksErr.message)}</div>`;
-        return;
-      }
-
-      // Group tasks by room
-      const tasksByRoom = new Map();
-      for (const t of tasks) {
-        if (!tasksByRoom.has(t.room_id)) tasksByRoom.set(t.room_id, []);
-        tasksByRoom.get(t.room_id).push(t);
-      }
-
-      // Group rooms by floor
-      const floors = new Map();
-      for (const r of rooms) {
-        if (!floors.has(r.floor_name)) floors.set(r.floor_name, []);
-        floors.get(r.floor_name).push(r);
-      }
-
-      // Build HTML
-      const htmlFloors = [];
-      for (const [floorName, floorRooms] of floors) {
-        const htmlRooms = floorRooms.map(room => {
-          const rTasks = tasksByRoom.get(room.id) || [];
-          const htmlTasks = rTasks.map(t => taskHtml(t, room.id)).join('');
-
+        const tradeHtml=[...byTrade.entries()].map(([trade,list])=>{
+          const rows=list.map(taskHtml).join('');
           return `
-            <details class="room" data-room-id="${room.id}">
-              <summary>${esc(room.room_name)}</summary>
-              <div class="body">
-                ${htmlTasks || '<div class="small">No tasks yet for this room.</div>'}
-              </div>
+            <details class="trade" data-trade="${esc(trade)}">
+              <summary>${esc(trade)}</summary>
+              <div class="body">${rows || '<div class="small">No tasks</div>'}</div>
             </details>
           `;
         }).join('');
 
-        htmlFloors.push(`
-          <details class="floor">
-            <summary>${esc(floorName)}</summary>
-            <div class="body">
-              <div class="grid-rooms">
-                ${htmlRooms}
-              </div>
-            </div>
-          </details>
-        `);
-      }
-
-      roomsEl.innerHTML = htmlFloors.join('');
-
-      // After render: populate thumbnails for each task
-      await refreshAllThumbnails(roomsEl);
-    }
-
-    function taskHtml(t, roomId) {
-      const cbId = `tcb_${t.id}`;
-      const ntId = `tnt_${t.id}`;
-      const fiId = `tfile_${t.id}`;
-      const phWrap = `photos_${t.id}`;
-      return `
-        <div class="task" data-task-id="${t.id}" data-room-id="${roomId}">
-          <div><input id="${cbId}" type="checkbox" ${t.done ? 'checked' : ''} /></div>
-          <div class="title">${esc(t.description)}</div>
-          <div class="status">${t.done ? 'Done' : 'To-do'}</div>
-
-          <textarea id="${ntId}" class="notes" placeholder="Notes">${t.notes ?? ''}</textarea>
-
-          <div class="photos">
-            <label class="small">Add photos</label>
-            <input id="${fiId}" type="file" accept="image/*" capture="environment" multiple />
-            <div id="${phWrap}" class="thumbs"></div>
+        const pct = total ? Math.round((done/total)*100) : 0;
+        const roomSum = `
+          <div class="room-summary">
+            <span>${esc(room.room_name)}</span>
+            <span class="chip">${done}/${total}</span>
+            <div class="meter" aria-label="Room progress"><span style="width:${pct}%"></span></div>
+            <span class="pct">${pct}%</span>
           </div>
-        </div>
+        `;
+
+        return `
+          <details class="room" data-room-id="${room.id}" data-done="${done}" data-total="${total}">
+            <summary>${roomSum}</summary>
+            <div class="body">${tradeHtml}</div>
+          </details>
+        `;
+      }).join('');
+
+      const floorPct = floorTotal ? Math.round((floorDone/floorTotal)*100) : 0;
+      const floorSummary = `
+        <span>${esc(floorName)}</span>
+        <span class="chip">${floorDone}/${floorTotal}</span>
+        <div class="meter" id="${floorId}-meter"><span style="width:${floorPct}%"></span></div>
+        <span class="pct" id="${floorId}-pct">${floorPct}%</span>
       `;
+
+      out.push(`
+        <details class="floor" data-floor="${esc(floorName)}" data-done="${floorDone}" data-total="${floorTotal}">
+          <summary>${floorSummary}</summary>
+          <div class="body"><div class="grid-rooms">${roomHtml}</div></div>
+        </details>
+      `);
     }
 
-    /* 9) Event wiring for tasks: checkbox + notes + photos (delegated) */
-    roomsEl.addEventListener('change', async (e) => {
-      const el = e.target;
-      // done checkbox
-      if (el.tagName === 'INPUT' && el.type === 'checkbox') {
-        const taskEl = el.closest('.task');
-        if (!taskEl) return;
-        const taskId = taskEl.dataset.taskId;
+    roomsEl.innerHTML=out.join('');
+    await refreshAllThumbs(); // load thumbnails after inject
+  }
 
-        // optimistic
-        taskEl.querySelector('.status').textContent = el.checked ? 'Done' : 'To-do';
+  function taskHtml(t){
+    return `
+      <div class="task" data-task-id="${t.id}">
+        <div><input type="checkbox" ${t.done?'checked':''}></div>
+        <div class="title">${esc(t.description||t.phase)}</div>
+        <div class="small">${t.done?'Done':'To-do'}</div>
+        <textarea class="notes" placeholder="Notes">${t.notes??''}</textarea>
+        <div class="photos">
+          <input type="file" accept="image/*" capture="environment" multiple />
+          <div id="photos_${t.id}" class="thumbs"></div>
+        </div>
+      </div>
+    `;
+  }
 
-        const { error } = await sb.from('tasks').update({ done: !!el.checked }).eq('id', taskId).single();
-        if (error) {
-          el.checked = !el.checked;
-          taskEl.querySelector('.status').textContent = el.checked ? 'Done' : 'To-do';
-          alert('Save failed: ' + error.message);
-        }
-      }
+  // ========== Event wiring: checkbox, notes, uploads ==========
+  roomsEl.addEventListener('change', async (e)=>{
+    const el=e.target;
+    const taskEl=el.closest('.task'); if(!taskEl) return;
 
-      // file input (photos)
-      if (el.tagName === 'INPUT' && el.type === 'file') {
-        const taskEl = el.closest('.task');
-        if (!taskEl) return;
-        const taskId = taskEl.dataset.taskId;
-        const files = Array.from(el.files || []);
-        if (!files.length) return;
+    // Toggle done
+    if(el.tagName==='INPUT' && el.type==='checkbox'){
+      const id=taskEl.dataset.taskId;
+      const done=!!el.checked;
+      taskEl.querySelector('.small').textContent = done ? 'Done' : 'To-do';
 
-        // upload each
-        Promise.all(files.map(f => uploadPhoto(taskId, f)))
-          .then(() => refreshThumbnailsForTask(taskId, taskEl))
-          .catch(err => alert('Upload failed: ' + err.message));
-      }
-    });
+      // Update DB
+      const {error}=await sb.from('tasks').update({done}).eq('id',id).single();
+      if(error){ el.checked=!done; taskEl.querySelector('.small').textContent = el.checked?'Done':'To-do'; return alert('Save failed: '+error.message); }
 
-    // Save notes on blur (use capture to catch textarea blur)
-    roomsEl.addEventListener('blur', async (e) => {
-      const el = e.target;
-      if (!(el.tagName === 'TEXTAREA' && el.classList.contains('notes'))) return;
-      const taskEl = el.closest('.task');
-      if (!taskEl) return;
-      const taskId = taskEl.dataset.taskId;
-      const { error } = await sb.from('tasks').update({ notes: el.value }).eq('id', taskId).single();
-      if (error) alert('Saving notes failed: ' + error.message);
-    }, true);
-
-    /* 10) Storage helpers: upload + list (photos bucket) */
-    async function uploadPhoto(taskId, file) {
-      const path = `${taskId}/${Date.now()}_${Math.random().toString(36).slice(2)}_${file.name}`;
-      const { error } = await sb.storage.from('photos').upload(path, file, {
-        cacheControl: '3600',
-        upsert: false,
-        contentType: file.type || 'image/jpeg'
-      });
-      if (error) throw error;
+      // Update room + floor meters without reloading
+      updateProgressForToggle(taskEl, done ? +1 : -1);
     }
 
-    async function listPhotos(taskId) {
-      // List all objects under prefix taskId/
-      const { data, error } = await sb.storage.from('photos').list(taskId, { limit: 100 });
-      if (error) throw error;
-      return data || [];
+    // Upload photos
+    if(el.tagName==='INPUT' && el.type==='file'){
+      const taskId=taskEl.dataset.taskId;
+      const files=[...el.files||[]];
+      if(!files.length) return;
+      try{
+        await Promise.all(files.map(f=>uploadPhoto(taskId,f)));
+        await refreshThumb(taskId, taskEl);
+      }catch(err){ alert('Upload failed: '+err.message); }
     }
+  });
 
-    function publicUrl(path) {
-      const { data } = sb.storage.from('photos').getPublicUrl(path);
-      return data.publicUrl;
-    }
+  // Save notes on blur
+  roomsEl.addEventListener('blur', async (e)=>{
+    const el=e.target;
+    if(!(el.tagName==='TEXTAREA' && el.classList.contains('notes'))) return;
+    const taskEl=el.closest('.task'); if(!taskEl) return;
+    const id=taskEl.dataset.taskId;
+    const {error}=await sb.from('tasks').update({notes:el.value}).eq('id',id).single();
+    if(error) alert('Saving notes failed: '+error.message);
+  }, true);
 
-    async function refreshThumbnailsForTask(taskId, taskEl) {
-      const wrap = taskEl.querySelector(`#photos_${CSS.escape(taskId)}`);
-      if (!wrap) return;
-      wrap.innerHTML = '<span class="small">Loading photos…</span>';
-      try {
-        const files = await listPhotos(taskId);
-        if (!files.length) { wrap.innerHTML = '<span class="small">No photos</span>'; return; }
-        wrap.innerHTML = files.map(f => {
-          const url = publicUrl(`${taskId}/${f.name}`);
-          return `<a href="${url}" target="_blank" rel="noopener"><img loading="lazy" src="${url}" alt=""></a>`;
-        }).join('');
-      } catch (err) {
-        wrap.innerHTML = `<span class="small">Photos error: ${esc(err.message)}</span>`;
-      }
-    }
+  // Update progress bars after a checkbox toggle
+  function updateProgressForToggle(taskEl, delta){
+    // room
+    const roomEl = taskEl.closest('details.room');
+    if(roomEl){
+      const total = parseInt(roomEl.dataset.total||'0',10);
+      let done = parseInt(roomEl.dataset.done ||'0',10);
+      done = Math.max(0, Math.min(total, done + delta));
+      roomEl.dataset.done = String(done);
 
-    async function refreshAllThumbnails(container) {
-      const taskEls = Array.from(container.querySelectorAll('.task'));
-      for (const t of taskEls) {
-        const taskId = t.dataset.taskId;
-        await refreshThumbnailsForTask(taskId, t);
+      const pct = total ? Math.round((done/total)*100) : 0;
+      const sum = roomEl.querySelector('.room-summary');
+      if(sum){
+        const meter = sum.querySelector('.meter > span');
+        const chip = sum.querySelector('.chip');
+        const pctEl = sum.querySelector('.pct');
+        if(meter) meter.style.width = pct+'%';
+        if(chip) chip.textContent = `${done}/${total}`;
+        if(pctEl) pctEl.textContent = pct+'%';
       }
     }
 
-    /* Expose render for reuse if you navigate back to a project */
-    window.renderFloorsAndRooms = renderFloorsAndRooms;
-  })();
-  </script>
+    // floor
+    const floorEl = taskEl.closest('details.floor');
+    if(floorEl){
+      const floorName = floorEl.dataset.floor;
+      const floorId = `floor-${idSafe(floorName)}`;
+      let fDone = parseInt(floorEl.dataset.done||'0',10);
+      const fTotal= parseInt(floorEl.dataset.total||'0',10);
+      fDone = Math.max(0, Math.min(fTotal, fDone + delta));
+      floorEl.dataset.done = String(fDone);
+
+      const fpct = fTotal ? Math.round((fDone/fTotal)*100) : 0;
+      const meter = floorEl.querySelector(`#${floorId}-meter > span`);
+      const pctEl = floorEl.querySelector(`#${floorId}-pct`);
+      const chip = floorEl.querySelector('summary .chip');
+      if(meter) meter.style.width = fpct+'%';
+      if(pctEl) pctEl.textContent = fpct+'%';
+      if(chip) chip.textContent = `${fDone}/${fTotal}`;
+    }
+  }
+
+  // ========== Storage helpers ==========
+  async function uploadPhoto(taskId,file){
+    const path = `${taskId}/${Date.now()}_${Math.random().toString(36).slice(2)}_${file.name.replace(/\s+/g,'_')}`;
+    const {error}=await sb.storage.from('photos').upload(path,file,{cacheControl:'3600',upsert:false,contentType:file.type||'image/jpeg'});
+    if(error) throw error;
+  }
+  async function listPhotos(taskId){
+    const {data,error}=await sb.storage.from('photos').list(taskId,{limit:100});
+    if(error) throw error; return data||[];
+  }
+  function publicUrl(path){ return sb.storage.from('photos').getPublicUrl(path).data.publicUrl; }
+  async function refreshThumb(taskId, taskEl){
+    const wrap=taskEl.querySelector(`#photos_${CSS.escape(taskId)}`); if(!wrap) return;
+    wrap.innerHTML='<span class="small">Loading…</span>';
+    try{
+      const files=await listPhotos(taskId);
+      if(!files.length){ wrap.innerHTML='<span class="small">No photos</span>'; return; }
+      wrap.innerHTML = files.map(f=>{
+        const url=publicUrl(`${taskId}/${f.name}`);
+        return `<a href="${url}" target="_blank" rel="noopener"><img loading="lazy" src="${url}" alt=""></a>`;
+      }).join('');
+    }catch(err){ wrap.innerHTML=`<span class="small">Photos error: ${esc(err.message)}</span>`; }
+  }
+  async function refreshAllThumbs(){ for(const t of roomsEl.querySelectorAll('.task')) await refreshThumb(t.dataset.taskId,t); }
+})();
+</script>
 </body>
 </html>
