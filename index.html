@@ -303,88 +303,82 @@ $$(".input[data-toggle]").forEach((cb) => {
       if (idx >= 0) {
         r.tradeTasks[tr][idx].done = !!e.target.checked;
         persistSoon();
-    // JS: auth + form wiring 
+    <!-- JS: auth + form wiring --> 
+
 <script type="module">
-  // Keep the current session in memory
-  let session = null;
+// Keep the current session in memory
+let session = null;
+const authBox = document.getElementById('auth-box');
 
-  // Reference to the login box container
-  const authBox = document.getElementById('auth-box');
-
-  // Render: show app UI when logged in, show login box when logged out
-  function render() {
-    if (session) {
-      if (typeof renderAuth === 'function') renderAuth(); // your existing app UI
-      if (authBox) authBox.style.display = 'none';
-    } else {
-      if (authBox) authBox.style.display = 'block';
-    }
+// Render either the app UI or the login box
+function render() {
+  if (session) {
+    if (typeof renderAuth === 'function') renderAuth();
+    if (authBox) authBox.style.display = 'none';
+  } else {
+    if (authBox) authBox.style.display = 'block';
   }
+}
 
-  // Re-render whenever auth state changes (sign in/out)
-  supabase.auth.onAuthStateChange((_event, s) => {
-    // Works for both v1 and v2 callbacks
-    session = s?.session ?? s;
-    render();
-  });
+// Re-render on auth state changes (sign in/out)
+supabase.auth.onAuthStateChange((_event, s) => {
+  session = s?.session ?? s;
+  render();
+});
 
-  // On first load, check if already signed in
-  (async () => {
-    const { data } = await supabase.auth.getSession();
-    session = data.session;
-    render();
-  })();
+// On first load, check if already signed in
+(async () => {
+  const { data } = await supabase.auth.getSession();
+  session = data.session;
+  render();
+})();
 
-  // -------------------- AUTH FORM LOGIC --------------------
+// ----- AUTH FORM LOGIC -----
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const signupBtn = document.getElementById('signup-btn');
+const loginBtn = document.getElementById('login-btn');
+const logoutBtn = document.getElementById('logout-btn');
 
-  const emailInput = document.getElementById('email');
-  const passwordInput = document.getElementById('password');
-  const signupBtn = document.getElementById('signup-btn');
-  const loginBtn = document.getElementById('login-btn');
-  const logoutBtn = document.getElementById('logout-btn');
-
-  // Sign Up (email + password)
-  signupBtn?.addEventListener('click', async () => {
+// Sign Up
+if (signupBtn) {
+  signupBtn.addEventListener('click', async () => {
     const email = (emailInput?.value || '').trim();
     const password = passwordInput?.value || '';
-    if (!email || !password) {
-      alert('Please enter email and password');
-      return;
-    }
+    if (!email || !password) return alert('Please enter email and password');
     const { error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      alert('Sign up failed: ' + error.message);
-      return;
-    }
-    // If email confirmations are ON in Supabase, the user must confirm by email first.
-    alert('Sign up successful. Check your email to confirm (if required).');
+    if (error) return alert('Sign up failed: ' + error.message);
+    alert('Sign up successful. Check your email to confirm.');
   });
+}
 
-  // Log In (email + password)
-  loginBtn?.addEventListener('click', async () => {
+// Log In
+if (loginBtn) {
+  loginBtn.addEventListener('click', async () => {
     const email = (emailInput?.value || '').trim();
     const password = passwordInput?.value || '';
-    if (!email || !password) {
-      alert('Please enter email and password');
-      return;
-    }
+    if (!email || !password) return alert('Please enter email and password');
     const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      alert('Login error: ' + error.message);
-      return;
-    }
-    // onAuthStateChange above will call render()
+    if (error) return alert('Login error: ' + error.message);
   });
+}
 
-  // Log Out
-  logoutBtn?.addEventListener('click', async () => {
+// Log Out
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', async () => {
     const { error } = await supabase.auth.signOut();
-    if (error) {
-      alert('Logout error: ' + error.message);
-      return;
-    }
-    // onAuthStateChange will run and show the login box
+    if (error) return alert('Logout error: ' + error.message);
+    alert('Logged out.');
   });
+}
 </script>
+
+<!-- Service Worker registration -->
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("sw.js?v=4").catch(() => {});
+}
+</script>
+
 </body>
 </html>
