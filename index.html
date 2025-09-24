@@ -1,384 +1,88 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MPJ Tracker</title>
- 
-  <meta name="theme-color" content="#0b5f3b">
- <!-- Standard favicon -->
-<link rel="icon" type="image/x-icon" href="/favicon.ico">
 
-<!-- Optional logo for manifest / larger icons -->
-<link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<!-- Load Supabase library -->
-<script src="https://unpkg.com/@supabase/supabase-js"></script>
+  <!-- Favicon / icons (optional) -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <meta name="theme-color" content="#0b5f3b" />
 
-<!-- Create Supabase client early (before any use) -->
-<script>
-  // Create Supabase client early (and make it global)
-  const SUPABASE_URL = "https://zpnruthpkmcnpxiztpf.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
+  <!-- Supabase library + Auth UI web component -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script type="module" src="https://unpkg.com/@supabase/auth-ui@0.5.8/dist/web/index.js"></script>
 
-  window.supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-  console.log("✅ Supabase client ready");
-</script>
-<link rel="manifest" href="manifest.webmanifest?v=2">
   <style>
-    :root{--brand:#0b5f3b;--accent:#f0b323;--bg:#f7faf9;--border:#e3e8e6;--muted:#eef3f1;--text:#0f172a;--sub:#64748b}
-    *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Arial}
-    .header{position:sticky;top:0;background:#fff;border-bottom:3px solid var(--brand);z-index:10}
-    .hi{max-width:1200px;margin:0 auto;display:flex;gap:.6rem;align-items:center;padding:.7rem 1rem}
-    .logo{display:flex;align-items:center;gap:.6rem;background:var(--brand);color:#fff;padding:.45rem .7rem;border-radius:14px;font-weight:700}
-    .logo img{height:28px;border-radius:6px;background:#fff}
-    .container{max-width:1200px;margin:0 auto;padding:1rem}
-    .card{border:1px solid var(--border);background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-    .head{padding:1rem;border-bottom:1px solid var(--border)} .body{padding:1rem}
-    .input,.ta{border:1px solid var(--border);padding:.55rem .65rem;border-radius:10px;width:100%}
-    .ta{min-height:8rem}
-    .btn{border:2px solid var(--brand);background:#fff;padding:.45rem .7rem;border-radius:10px;cursor:pointer}
-    .btn.primary{background:var(--brand);color:#fff;border-color:var(--brand)}
-    .btn.accent{border-color:var(--accent);background:var(--accent);color:#111}
-    .row{display:flex;align-items:center;gap:.6rem}
-    .small{font-size:.9rem;color:var(--sub)}
-    .grid{display:grid;grid-template-columns:1fr;gap:1rem}
-    @media(min-width:900px){.grid{grid-template-columns:320px 1fr}}
-    .room{border:1px solid var(--border);border-radius:10px;padding:.6rem;cursor:pointer}
-    .room.active{border-color:var(--brand);background:rgba(11,95,59,.06)}
-    .photo{position:relative;border:1px solid var(--border);border-radius:10px;overflow:hidden}
-    .photo img{width:100%;height:140px;object-fit:cover}
-    .badge{display:inline-flex;align-items:center;background:#fff8e6;border:1px solid var(--accent);padding:.15rem .5rem;border-radius:999px;font-size:.8rem;color:#7a4d00}
-    .tabbar{display:flex;gap:.25rem;border-bottom:2px solid var(--muted);margin-top:8px}
-    .tabbar button{border:none;background:transparent;padding:.6rem .9rem;border-bottom:3px solid transparent;cursor:pointer;font-weight:600}
-    .tabbar button.active{border-bottom-color:var(--accent);color:var(--brand)}
-    .list{display:grid;gap:.6rem}
-    .chip{display:inline-flex;align-items:center;padding:.2rem .5rem;border:1px solid var(--border);border-radius:999px;font-size:.8rem;gap:.3rem}
-    .progress{height:8px;background:var(--muted);border-radius:999px;overflow:hidden}
-    .progress>span{height:100%;display:block;background:var(--brand)}
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; }
+    .wrap { max-width: 900px; margin: 2rem auto; padding: 1rem; }
+    .hidden { display: none; }
+    .bar { display:flex; align-items:center; gap:.5rem; }
+    .brand { font-weight: 700; color:#0b5f3b; }
+    button { padding:.5rem 1rem; border-radius:8px; border:1px solid #ddd; cursor:pointer; }
   </style>
 </head>
 <body>
-  <div id="auth-box">
-  <h2>Login / Sign Up</h2>
-  <input id="email" type="email" placeholder="Enter your email" />
-  <input id="password" type="password" placeholder="Enter your password" />
-  <button id="signup-btn">Sign Up</button>
-  <button id="login-btn">Log In</button>
-  <button id="logout-btn" style="display:none;">Log Out</button>
-</div>
-  <div class="header">
-    <div class="hi">
-      <div class="logo"><img src="mpj-logo.png" alt="logo"><span>M Philips Joinery LTD</span></div>
-      <input id="project-name" class="input" placeholder="Project name" style="max-width:320px" />
-      <input id="project-address" class="input" placeholder="Site address (optional)" style="max-width:420px" />
-      <div class="row" style="margin-left:auto">
-        <span id="sync" class="badge">Connecting…</span>
-        <button id="print" class="btn">Print / PDF</button>
-        <button id="logout" class="btn accent" style="display:none">Sign out</button>
-      </div>
+  <div class="wrap">
+    <div class="bar">
+      <span class="brand">MPJ Tracker</span>
+      <span id="status" style="margin-left:auto;color:#666;">Connecting…</span>
     </div>
-    <div class="hi" style="padding-top:0">
-      <span class="small">Overall progress</span>
-      <div class="progress" style="width:260px;margin:0 .5rem"><span id="overall-bar" style="width:0%"></span></div>
-      <span class="badge" id="overall-pct">0%</span>
+
+    <!-- Auth UI (shown when logged OUT) -->
+    <div id="auth-box">
+      <!-- This tag renders Supabase's auth forms (email+password by default) -->
+      <supabase-auth
+        id="auth"
+        providers="email"
+        appearance='{"style":{"button":{"borderRadius":"8px"}}}'>
+      </supabase-auth>
+    </div>
+
+    <!-- App UI (shown when logged IN) -->
+    <div id="app" class="hidden">
+      <p>✅ Logged in. Build the app UI here.</p>
+      <button id="logout">Log out</button>
     </div>
   </div>
 
-  <div id="app" class="container"></div>
-
   <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+    // 🔧 EDIT THESE TWO:
+    const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co/";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
 
-    // 🔐 Your Supabase project details (baked in)
-    const SUPABASE_URL = 'https://btwvnjrzkxpllumedksc.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ0d3ZuanJ6a3hwbGx1bWVka3NjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0MTgzMzcsImV4cCI6MjA3Mzk5NDMzN30.DPZq-YdejiWOpyVXYfSGH42sj-jUoIGi37YZhr1ZGm8';
+    // Create client and expose globally (handy if you add more files later)
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    window.supabaseClient = supabase;
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const bucket = 'photos';
-    const pid = 'mpj-default';
+    const authBox = document.getElementById('auth-box');
+    const appBox = document.getElementById('app');
+    const status = document.getElementById('status');
+    const logout = document.getElementById('logout');
 
-    const $ = (s,e=document)=>e.querySelector(s); const $$=(s,e=document)=>Array.from(e.querySelectorAll(s));
-    const app = $('#app'); const sync=$('#sync');
-
-    // Trades & templates
-    const DEFAULT_TRADES = ["Joinery","Plumbing","Electrical","Plastering","Painting","Flooring","Tiling","Windows/Doors","HVAC","Landscaping"];
-    const DEFAULT_TRADE_TEMPLATES = {
-      "Joinery":["Framing","Plywood install","Plasterboard","Ceilings","Coffer Ceilings","Internal doors","Skirting","Architraves","Window boards","Paneling","Features","Extras"],
-      "Electrical":["1st fix","2nd fix","MVHR","AC","Extras"],
-      "Plumbing":["1st fix","2nd fix","Extras"],
-      "Plastering":["Ceilings","Walls","Extras"],
-      "Painting":["Fill","Caulk","Prime","Mist coat","Undercoat","Finish coat","Extras"],
-      "Flooring":["Prep/level","Floor down","Trims","Extras"],
-      "Tiling":["Walls","Floors","Grout","Seal","Extras"],
-      "Windows/Doors":["Frames in","Glazing","Sealant","Extras"],
-      "HVAC":["Ducts in","Units installed","Commission","Extras"],
-      "Landscaping":["Groundworks","Patio","Turf/planting","Fencing","Extras"]
-    };
-    const ROOMS = [
-      "Second floor – Lobby","Second floor – Bedroom 1","Second floor – Bedroom 1 ensuite","Second floor – Bedroom 1 dresser","Second floor – Bedroom 2","Second floor – Bedroom 2 ensuite","Second floor – Bedroom 2 dresser","Second floor – Rod office","Second floor – Sheila office",
-      "First floor – Lobby","First floor – Bedroom 3","First floor – Bedroom 3 ensuite","First floor – Bedroom 4","First floor – Bedroom 4 ensuite","First floor – Bedroom 5","First floor – Bedroom 5 ensuite","First floor – Bedroom 6","First floor – Bedroom 6 ensuite",
-      "Ground floor – Lobby","Ground floor – Living room","Ground floor – Dining room","Ground floor – Kitchen","Ground floor – WC","Ground floor – Store","Ground floor – Annex kitchenette","Ground floor – Annex ensuite","Ground floor – Annex bedroom",
-      "Basement – Lobby","Basement – Gym","Basement – Wine room","Basement – Safe room","Basement – Treatment room 1","Basement – Treatment room 2","Basement – Steam room","Basement – Utility room","Basement – WC","Basement – Plant room","Basement – Bar","Basement – Cinema","Garage"
-    ];
-
-   // Helpers
-const uid = () =>
-  (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
-    ? crypto.randomUUID()
-    : Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
-
-const ensureTaskShape = (t = {}) => ({
-  id: t.id || uid(),
-  title: String(t.title || ""),
-  done: !!t.done,
-  photos: Array.isArray(t.photos) ? t.photos : [],
-  trade: t.trade || ""
-});
-
-const emptyTradeTasks = (trades = []) =>
-  trades.map(tr => ({ id: uid(), title: "", done: false, photos: [], trade: tr }));
-
-const calcRoomProgress = (room) => {
-  const tasks = Array.isArray(room.tradeTasks) ? room.tradeTasks : [];
-  const done = tasks.filter(t => t && t.done).length;
-  return tasks.length ? Math.round((done / tasks.length) * 100) : 0;
-};
-
-    supabase.auth.onAuthStateChange((_e,s)=>{ session=s; render(); });
-    init(); async function init(){ const { data } = await supabase.auth.getSession(); session=data.session; render(); if(session) ensureProject(); }
-
-    function renderAuth(){
-      app.innerHTML = `<div class="card" style="max-width:420px;margin:4rem auto">
-        <div class="head"><strong>Sign in</strong></div>
-        <div class="body">
-          <p class="small">Enter your email and we'll send you a magic link.</p>
-          <input id="email" class="input" placeholder="you@company.com">
-          <div style="display:flex;justify-content:flex-end;margin-top:.6rem"><button id="send" class="btn primary">Send link</button></div>
-        </div>
-      </div>`;
-      $('#send').onclick = async()=>{ const email=$('#email').value.trim(); if(!email) return;
-        const { error } = await supabase.auth.signInWithOtp({ email, options:{ emailRedirectTo: window.location.origin } });
-        alert(error ? error.message : 'Check your email for the sign-in link'); };
-      $('#logout').style.display='none'; $('#sync').textContent='Sign in required';
+    // Render helper
+    function render(session) {
+      const loggedIn = !!session;
+      status.textContent = loggedIn ? 'Signed in' : 'Signed out';
+      authBox.classList.toggle('hidden', loggedIn);
+      appBox.classList.toggle('hidden', !loggedIn);
     }
 
-    async function ensureProject(){
-      const res = await supabase.from('projects').select('*').eq('id',pid).maybeSingle();
-      if(!res.data){
-        const rooms=ROOMS.map(n=>({ id:uuid(), name:n, notes:'', photos:[], tradeTasks:emptyTradeTasks(DEFAULT_TRADES) }));
-        project = { id:pid, name:'M Philips Joinery LTD – Site Project', address:'', trades:DEFAULT_TRADES, rooms, createdAt:new Date().toISOString() };
-        await supabase.from('projects').insert({ id:pid, name:project.name, data:project });
-      } else { project = res.data.data; }
-      // Upgrade any old tasks to include a photos array
-      project.rooms.forEach(r=> Object.values(r.tradeTasks||{}).forEach(arr=> arr.forEach(t=> ensureTaskShape(t)) ));
-      activeRoomId = activeRoomId || project.rooms[0]?.id || null;
-      $('#project-name').value = project.name || ''; $('#project-address').value = project.address || '';
-      $('#sync').textContent='Synced';
-      supabase.channel('projects-'+pid).on('postgres_changes',{event:'*',schema:'public',table:'projects',filter:'id=eq.'+pid},p=>{ if(p?.new?.data){ project=p.new.data; renderMain(); } }).subscribe();
-      renderMain();
-    }
+    // Listen for auth state changes
+    supabase.auth.onAuthStateChange((_event, session) => render(session));
 
-    function persistSoon(){
-      clearTimeout(window._t); window._t = setTimeout(async()=>{ await supabase.from('projects').update({ name:project.name, data:project }).eq('id',pid); }, 500);
-    }
+    // Initial session check
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      render(data.session);
+    })();
 
-    function renderMain(){
-      const totals = project.rooms.map(calcRoomProgress);
-      const overall = totals.length? Math.round(totals.reduce((a,b)=>a+b,0)/totals.length) : 0;
-      $('#overall-bar').style.width = overall+'%'; $('#overall-pct').textContent = overall+'%';
-      app.innerHTML = `
-        <div class="grid">
-          <div class="card">
-            <div class="head"><strong>Rooms</strong><div class="small">Tap to switch. Add, duplicate or delete.</div></div>
-            <div class="body">
-              <div class="row" style="margin-bottom:.5rem">
-                <button class="btn primary" id="add-room">+ Add room</button>
-                <button class="btn" id="bulk-room">Bulk add</button>
-              </div>
-              <div class="list" id="rooms"></div>
-            </div>
-          </div>
-          <div class="card">
-            <div class="head">
-              <div class="row"><strong id="rt"></strong></div>
-              <div class="small">Tick off tasks per trade, leave notes, attach photos per task.</div>
-              <div class="tabbar">
-                <button data-tab="tasks" class="${currentTab==='tasks'?'active':''}">Tasks</button>
-                <button data-tab="matrix" class="${currentTab==='matrix'?'active':''}">Matrix</button>
-                <button data-tab="notes" class="${currentTab==='notes'?'active':''}">Notes</button>
-              </div>
-            </div>
-            <div class="body" id="room"></div>
-          </div>
-        </div>`;
-
-      const list = $('#rooms'); const rooms = project.rooms; const active = rooms.find(r=>r.id===activeRoomId)||rooms[0];
-      list.innerHTML = rooms.map(r=>`
-        <div class="room ${r.id===active.id?'active':''}" data-id="${r.id}">
-          <div class="row">
-            <div style="font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</div>
-            <span class="chip">${calcRoomProgress(r)}%</span>
-          </div>
-          <div class="progress" style="margin-top:6px"><span style="width:${calcRoomProgress(r)}%"></span></div>
-          <div class="row" style="margin-top:.4rem">
-            <button class="btn" data-dup="${r.id}">Duplicate</button>
-            <button class="btn" data-ren="${r.id}">Rename</button>
-            <button class="btn" data-del="${r.id}">Delete</button>
-          </div>
-        </div>`).join('');
-
-      list.onclick = (e)=>{ const id=e.target.closest('.room')?.dataset?.id; if(id){ activeRoomId=id; renderMain(); } };
-      $$('.btn[data-dup]').forEach(b=> b.onclick = (e)=>{ e.stopPropagation(); const id=b.getAttribute('data-dup'); const r=rooms.find(x=>x.id===id);
-        const copy={...r, id:uuid(), name:r.name+' (copy)', photos:[], tradeTasks:Object.fromEntries(Object.entries(r.tradeTasks).map(([k,a])=>[k,a.map(t=>({id:uuid(),title:t.title,done:false,photos:[]}))]))};
-        project.rooms.push(copy); persistSoon(); renderMain(); });
-      $$('.btn[data-ren]').forEach(b=> b.onclick = (e)=>{ e.stopPropagation(); const id=b.getAttribute('data-ren'); const r=rooms.find(x=>x.id===id); const nn=prompt('Rename room', r.name); if(nn){ r.name=nn; persistSoon(); renderMain(); } });
-      $$('.btn[data-del]').forEach(b=> b.onclick = (e)=>{ e.stopPropagation(); const id=b.getAttribute('data-del'); if(confirm('Delete room?')){ project.rooms = rooms.filter(x=>x.id!==id); persistSoon(); renderMain(); } });
-
-      $('#add-room').onclick = ()=>{ const r={ id:uuid(), name:'New room', notes:'', photos:[], tradeTasks:emptyTradeTasks(project.trades) }; project.rooms.push(r); activeRoomId=r.id; persistSoon(); renderMain(); };
-      $('#bulk-room').onclick = ()=>{ const t=prompt('Paste names, separated by commas or new lines'); if(!t) return; t.split(/\n|,|;/).map(s=>s.trim()).filter(Boolean).forEach(n=> project.rooms.push({ id:uuid(), name:n, notes:'', photos:[], tradeTasks:emptyTradeTasks(project.trades) })); persistSoon(); renderMain(); };
-
-      $('#rt').textContent = active.name;
-      $$('.tabbar button').forEach(b=> b.onclick = ()=>{ currentTab=b.dataset.tab; renderMain(); });
-      drawRoom(active);
-      $('#logout').style.display='inline-block'; $('#logout').onclick=async()=>{ await supabase.auth.signOut(); location.reload(); };
-      $('#print').onclick=()=>window.print();
-    }
-
-    function drawRoom(r){
-      const body = $('#room');
-      if(currentTab==='notes'){
-        body.innerHTML = `<textarea class="ta" id="notes" placeholder="Site notes, snags, deliveries, dependencies…"></textarea>`;
-        $('#notes').value = r.notes || ''; $('#notes').oninput = (e)=>{ r.notes=e.target.value; persistSoon(); };
-        return;
-      }
-      if(currentTab==='matrix'){
-        body.innerHTML = `
-          <table style="width:100%;border-collapse:collapse">
-            <thead><tr><th style="text-align:left;border-bottom:2px solid var(--border);padding:.5rem">Trade</th><th style="text-align:left;border-bottom:2px solid var(--border);padding:.5rem">All done?</th><th style="text-align:left;border-bottom:2px solid var(--border);padding:.5rem">Open items</th></tr></thead>
-            <tbody>
-              ${project.trades.map(tr=>{ const arr=r.tradeTasks[tr]||[]; const open=arr.filter(t=>!t.done).map(t=>t.title).join(', ')||'—'; const allDone=arr.length>0 && arr.every(t=>t.done);
-                return `<tr><td style="border-bottom:1px solid var(--border);padding:.5rem;font-weight:700">${tr}</td><td style="border-bottom:1px solid var(--border);padding:.5rem"><span class="chip">${allDone?'Yes':'No'}</span></td><td style="border-bottom:1px solid var(--border);padding:.5rem" class="small">${open}</td></tr>`; }).join('')}
-            </tbody></table>`;
-        return;
-      }
-      // Tasks with per-task multi-photo galleries
-      body.innerHTML = project.trades.map(tr=>{ const arr=r.tradeTasks[tr]||[]; return `
-        <div class="card" style="border-left:4px solid var(--accent);margin-bottom:.8rem">
-          <div class="head">
-            <div class="row">
-              <div style="font-weight:700">${tr}</div>
-              <span class="chip">${arr.filter(t=>t.done).length}/${arr.length}</span>
-              <div style="margin-left:auto" class="row">
-                <input class="input" id="add-${tr}-text" placeholder="Add task…" style="width:220px;height:36px" />
-                <button class="btn accent" data-add="${tr}">Add</button>
-              </div>
-            </div>
-          </div>
-          <div class="body">
-            ${arr.map(t=>`<div class="card" style="margin:.4rem 0">
-              <div class="head">
-                <div class="row">
-                  <label class="row" style="flex:1;gap:.6rem">
-                    <input type="checkbox" data-toggle="${tr}" data-id="${t.id}" ${t.done?'checked':''} />
-                    <div style="font-weight:600;${t.done?'text-decoration:line-through;color:#64748b':''}">${t.title}</div>
-                  </label>
-                  <span class="chip">📷 ${(t.photos||[]).length}</span>
-                  <label class="btn accent">Add photos<input type="file" data-up="${t.id}" data-trade="${tr}" accept="image/*" capture="environment" multiple style="display:none"></label>
-                </div>
-              </div>
-              <div class="body">
-                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem" id="grid-${t.id}">
-                  ${(t.photos||[]).map((ph,i)=>{ const src=(typeof ph==='string')?ph:ph.url; return `<div class='photo'><img src='${src}'><button class='btn' data-del='${t.id}' data-trade='${tr}' data-index='${i}' style='position:absolute;top:6px;right:6px'>Delete</button></div>`; }).join('')}
-                </div>
-              </div>
-            </div>`).join('')}
-          </div>
-        </div>`}).join('');
-$$(".input[data-toggle]").forEach((cb) => {
-    cb.onchange = (e) => {
-      const tr = e.target.getAttribute("data-toggle");
-      const idx = r.tradeTasks[tr].findIndex(t => t.id === tr);
-      if (idx >= 0) {
-        r.tradeTasks[tr][idx].done = !!e.target.checked;
-        persistSoon();
-    <!-- JS: auth + form wiring --> 
-
-<script type="module">
-// Keep the current session in memory
-let session = null;
-const authBox = document.getElementById('auth-box');
-
-// Render either the app UI or the login box
-function render() {
-  if (session) {
-    if (typeof renderAuth === 'function') renderAuth();
-    if (authBox) authBox.style.display = 'none';
-  } else {
-    if (authBox) authBox.style.display = 'block';
-  }
-}
-
-// Re-render on auth state changes (sign in/out)
-supabase.auth.onAuthStateChange((_event, s) => {
-  session = s?.session ?? s;
-  render();
-});
-
-// On first load, check if already signed in
-(async () => {
-  const { data } = await supabase.auth.getSession();
-  session = data.session;
-  render();
-})();
-
-// ----- AUTH FORM LOGIC -----
-const emailInput = document.getElementById('email');
-const passwordInput = document.getElementById('password');
-const signupBtn = document.getElementById('signup-btn');
-const loginBtn = document.getElementById('login-btn');
-const logoutBtn = document.getElementById('logout-btn');
-
-// Sign Up
-if (signupBtn) {
-  signupBtn.addEventListener('click', async () => {
-    const email = (emailInput?.value || '').trim();
-    const password = passwordInput?.value || '';
-    if (!email || !password) return alert('Please enter email and password');
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) return alert('Sign up failed: ' + error.message);
-    alert('Sign up successful. Check your email to confirm.');
-  });
-}
-
-// Log In
-if (loginBtn) {
-  loginBtn.addEventListener('click', async () => {
-    const email = (emailInput?.value || '').trim();
-    const password = passwordInput?.value || '';
-    if (!email || !password) return alert('Please enter email and password');
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return alert('Login error: ' + error.message);
-  });
-}
-
-// Log Out
-if (logoutBtn) {
-  logoutBtn.addEventListener('click', async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) return alert('Logout error: ' + error.message);
-    alert('Logged out.');
-  });
-}
-</script>
-
-<!-- Service Worker registration -->
-<script>
-if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("sw.js?v=4").catch(() => {});
-}
-</script>
-
+    // Logout
+    logout.addEventListener('click', async () => {
+      const { error } = await supabase.auth.signOut();
+      if (error) alert('Logout error: ' + error.message);
+    });
+  </script>
 </body>
 </html>
