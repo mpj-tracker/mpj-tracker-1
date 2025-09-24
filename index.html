@@ -307,6 +307,7 @@ $$(".input[data-toggle]").forEach((cb) => {
     };
   });
       </script>
+  
 <script type="module">
 <!-- ================= AUTH WIRING ================= -->
 <script>
@@ -328,10 +329,12 @@ $$(".input[data-toggle]").forEach((cb) => {
 
   // function to render either auth or project UI
   function render() {
-    if (session) {
-      renderAuth();
-    } else {
-      ensureProject();
+  if (session) {
+    renderAuth();
+  } else {
+    document.getElementById("auth-box").style.display = "block";
+  }
+}
     }
   }
 
