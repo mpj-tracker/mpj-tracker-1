@@ -306,11 +306,9 @@ $$(".input[data-toggle]").forEach((cb) => {
       }
     };
   });
-
-  
 <script type="module">
-<!-- ================= AUTH WIRING ================= -->
-<script>
+  // AUTH WIRING
+
   // keep the current session
   let session = null;
 
@@ -320,13 +318,13 @@ $$(".input[data-toggle]").forEach((cb) => {
     render();
   });
 
-  // on page load, check if there is already a session, then render
+  // on first load, check if already signed in, then render
   (async () => {
     const { data } = await supabase.auth.getSession();
     session = data.session;
     render();
   })();
-
+</script>
   // function to render either auth or project UI
   function render() {
   if (session) {
