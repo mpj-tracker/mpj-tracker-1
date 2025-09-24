@@ -554,8 +554,15 @@ document.addEventListener('click', async (e) => {
     const taskId = btn.dataset.taskId || null;
     const trade = btn.dataset.trade || null;
     const phase = btn.dataset.phase || null;
-    const whoId = session.user.id;
-    const whoName = session.user.email;
+ // Who is signing?
+const whoId = session?.user?.id; // ✅ UUID from auth.users
+const whoName = session?.user?.email 
+  || session?.user?.user_metadata?.full_name 
+  || 'unknown';
+
+if (!whoId) {
+  return alert('No authenticated user id – please sign in again.');
+}
 
     if (!roomId || !trade) {
       return alert('Missing room or trade on sign-off button.');
