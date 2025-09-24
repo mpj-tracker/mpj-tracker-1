@@ -1,159 +1,616 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>MPJ Tracker</title>
-  <link rel="icon" type="image/png" href="mpj-logo.png" />
+
+  <!-- PWA/meta (optional) -->
+  <meta name="theme-color" content="#0b5f3b"/>
+  <link rel="manifest" href="/manifest.webmanifest?v=1"/>
+  <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png"/>
+
+  <!-- Supabase UMD (no CORS issues) -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f8f9fa; }
-    header { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; background: #004225; color: white; }
-    header img { height: 40px; margin-right: 10px; }
-    .container { padding: 20px; }
-    details { margin-bottom: 10px; border: 1px solid #ccc; border-radius: 5px; background: white; padding: 5px 10px; }
-    summary { font-weight: bold; cursor: pointer; }
-    .trade { padding: 5px; border-radius: 4px; margin: 5px 0; }
-    .joiner { background: #d4edda; }
-    .electrician { background: #f8d7da; }
-    .plumber { background: #d1ecf1; }
-    .plasterer { background: #fefefe; border: 1px solid #ccc; }
-    .decorator { background: #fff3cd; }
-    .tiler { background: #e2e3e5; }
-    .specialist { background: #f5d0fe; }
-    .progress { background: #e9ecef; border-radius: 4px; height: 14px; margin: 5px 0; }
-    .progress-bar { background: #28a745; height: 14px; border-radius: 4px; width: 0%; transition: width 0.3s ease; }
-    .signoff { margin-top: 8px; font-size: 0.9rem; }
-    .photos { margin-top: 6px; }
-    .photos img { height: 80px; margin: 4px; border-radius: 4px; border: 1px solid #ccc; object-fit: cover; display:block; }
-    .photos .caption { font-size: 0.8rem; color: #555; margin-left:4px; }
-    table { border-collapse: collapse; width: 100%; margin-top:10px; }
-    th, td { border:1px solid #ccc; padding:6px; text-align:left; }
-    th { background:#eee; }
-    #filter { margin:10px 0; padding:6px; width:100%; max-width:400px; }
-    .gallery-item { border:1px solid #ddd; border-radius:6px; padding:4px; }
+    :root{
+      --brand:#0b5f3b; --accent:#f0b323; --muted:#eef3f1; --border:#e3e8e6; --text:#111827;
+      --chip:#f6f6f6;
+      /* trade colours */
+      --joiners:#1f7a3b; /* green */
+      --plumbers:#2b6cb0; /* blue */
+      --electricians:#c53030; /* red */
+      --plasterer:#6b46c1; /* purple */
+      --decorators:#b7791f; /* amber */
+      --tiling:#3182ce; /* blue-ish */
+      --specialist:#718096; /* gray */
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#fff;color:var(--text)}
+    header{position:sticky;top:0;z-index:5;background:var(--brand);color:#fff;border-bottom:4px solid #094d30}
+    .hi{max-width:1200px;margin:0 auto;padding:0.75rem 1rem;display:flex;align-items:center;gap:1rem}
+    .logo{display:flex;align-items:center;gap:.75rem}
+    .logo img{height:28px;border-radius:4px;background:#fff;padding:3px}
+    .brand{font-weight:700;letter-spacing:.3px}
+    .status{margin-left:auto;opacity:.85}
+
+    main{max-width:1200px;margin:1rem auto;padding:0 1rem}
+    .bar{height:8px;background:#eee;border-radius:999px;overflow:hidden}
+    .bar>span{display:block;height:100%;background:var(--brand)}
+    .small{opacity:.7;font-size:.85rem}
+
+    .row{display:flex;gap:1rem;align-items:center}
+    .grid{display:grid;gap:1rem}
+    .grid.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    @media (max-width:900px){.grid.cols-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:700px){.grid.cols-2,.grid.cols-3{grid-template-columns:1fr}}
+
+    .card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1rem}
+    .btn{border:1px solid var(--border);background:#fff;padding:.55rem .9rem;border-radius:10px;cursor:pointer}
+    .btn.accent{background:var(--accent);border-color:#d69e2e;color:#000;font-weight:600}
+    .btn.ghost{background:#f8fafc}
+    .input{width:100%;border:1px solid var(--border);border-radius:10px;padding:.55rem .75rem}
+    details{border:1px solid var(--border);border-radius:14px;background:#fff}
+    details+details{margin-top:.75rem}
+    summary{list-style:none;cursor:pointer;padding:1rem;border-radius:14px;display:flex;align-items:center;gap:.75rem}
+    summary::-webkit-details-marker{display:none}
+    .pill{padding:.25rem .55rem;border-radius:999px;background:#f2f4f7;font-size:.8rem}
+    .chip{background:var(--chip);border:1px solid var(--border);padding:.25rem .5rem;border-radius:999px;font-size:.8rem}
+    .tradeHeader{display:flex;align-items:center;gap:.5rem;margin:.25rem 0 1rem}
+    .tradeHeader .dot{width:10px;height:10px;border-radius:999px}
+    .task{display:grid;grid-template-columns:auto 1fr auto;gap:.75rem;align-items:start;border:1px solid var(--border);border-radius:12px;padding:.6rem;background:#fff}
+    .task .notes{grid-column:1/-1}
+    .photos{display:flex;gap:.4rem;flex-wrap:wrap}
+    .photos img{height:56px;width:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border)}
+    .tradeBox{border:1px dashed var(--border);border-radius:12px;padding:.75rem;margin:.5rem 0;background:#fafafa}
+    .muted{opacity:.7}
+    .table{width:100%;border-collapse:collapse}
+    .table th,.table td{border-bottom:1px solid var(--border);padding:.5rem;text-align:left}
   </style>
 </head>
 <body>
   <header>
-    <div style="display:flex; align-items:center;">
-      <img src="mpj-logo.png" alt="Logo" />
-      <h1>MPJ Tracker</h1>
+    <div class="hi">
+      <div class="logo">
+        <img src="/mpj-logo.png" alt="logo"/>
+        <span class="brand">MPJ Tracker</span>
+      </div>
+      <div id="status" class="status">Signed out</div>
     </div>
-    <button id="logout-btn" style="background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:3px; cursor:pointer;">Log out</button>
   </header>
 
-  <div class="container">
-    <div id="auth-box">
+  <main>
+    <!-- Login / Sign Up -->
+    <div id="auth-box" class="card">
       <h2>Login / Sign Up</h2>
-      <input id="email" type="email" placeholder="Email" /><br/>
-      <input id="password" type="password" placeholder="Password" /><br/>
-      <button id="signup-btn">Sign Up</button>
-      <button id="login-btn">Log In</button>
+      <p class="small">Use your email + password to sign in. New users can sign up on the same form.</p>
+      <div class="row">
+        <input id="email" class="input" placeholder="Enter your email" />
+        <input id="password" class="input" placeholder="Enter your password" type="password" />
+        <button id="signup-btn" class="btn">Sign Up</button>
+        <button id="login-btn" class="btn">Log In</button>
+      </div>
     </div>
 
-    <div id="project-box" style="display:none;">
+    <!-- Overall progress -->
+    <div class="card" style="margin-top:1rem">
+      <h3 style="margin:.25rem 0">Overall Progress</h3>
+      <div class="bar"><span id="overall-bar" style="width:0%"></span></div>
+      <div class="small" id="overall-label">0%</div>
+    </div>
+
+    <!-- Project box -->
+    <div id="project-box" class="card" style="margin-top:1rem">
       <h2>Project</h2>
-      <input id="project-name" placeholder="Project name" />
-      <input id="project-address" placeholder="Site address (optional)" />
-      <button id="use-project">Use / Create Project</button>
+      <div class="grid cols-2">
+        <input id="project-name" class="input" placeholder="Project name"/>
+        <input id="project-address" class="input" placeholder="Site address (optional)"/>
+      </div>
+      <div class="row" style="margin-top:.75rem">
+        <button id="use-project" class="btn accent">Use / Create Project</button>
+        <span class="small muted">Tip: re-use the same name to open it again later.</span>
+      </div>
     </div>
 
-    <h3>Overall Progress</h3>
-    <div class="progress"><div id="overall-progress" class="progress-bar"></div></div>
+    <!-- Dashboard -->
+    <div class="card" style="margin-top:1rem">
+      <h3>Project Dashboard</h3>
+      <input id="filter" class="input" placeholder="Filter by room, trade, or user…"/>
+      <details style="margin-top:.75rem">
+        <summary><strong>All Sign-offs</strong></summary>
+        <table class="table" id="signoffs-table">
+          <thead><tr><th>Room</th><th>Trade</th><th>Signed by</th><th>When</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </details>
+      <details style="margin-top:.75rem">
+        <summary><strong>All Photos</strong></summary>
+        <div id="photos-list" class="photos" style="margin-top:.5rem"></div>
+      </details>
+    </div>
 
-    <h3>Project Dashboard</h3>
-    <input id="filter" placeholder="Filter by room, trade, or user..." />
+    <!-- Floors / Rooms / Trades / Tasks -->
+    <div id="rooms" class="grid" style="margin-top:1rem"></div>
+  </main>
 
-    <details open>
-      <summary><strong>All Sign-offs</strong></summary>
-      <table id="signoff-table">
-        <thead>
-          <tr><th>Room</th><th>Trade</th><th>Signed by</th><th>Date</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </details>
+  <!-- ======== APP SCRIPT (plain script; no HTML comments inside) ======== -->
+  <script>
+  (function () {
+    // TODO: paste your real values (same as you already use)
+    const SUPABASE_URL = 'https://zpnqruthpknncpiiztxf.supabase.co'; 
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4'; 
 
-    <details>
-      <summary><strong>All Photos</strong></summary>
-      <div id="photo-gallery" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:10px; margin:10px 0;"></div>
-    </details>
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    <div id="rooms"></div>
-  </div>
+    // Floor order
+    const FLOOR_ORDER = ['Basement','Ground Floor','1st Floor','2nd Floor','Other'];
 
-  <script type="module">
-    import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+    // Trades config (colour + default tasks)
+    const TRADES = {
+      'Joiners' : { color:'var(--joiners)', tasks:['First fix','Second fix','Extras'] },
+      'Electricians': { color:'var(--electricians)', tasks:['First fix','Second fix','Extras'] },
+      'Plumbers' : { color:'var(--plumbers)', tasks:['First fix','Second fix','Extras'] },
+      'Plasterer' : { color:'var(--plasterer)', tasks:['First fix','Second fix','Extras'] },
+      'Decorators' : { color:'var(--decorators)', tasks:['First fix','Second fix','Extras'] },
+      'Tiling' : { color:'var(--tiling)', tasks:['Walls','Floor','Extras'] },
+      'Specialist' : { color:'var(--specialist)', tasks:['Extras'] }
+    };
 
-    const SUPABASE_URL = "https://zpnqruthpknncpilztxf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4"; 
-    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // DOM
+    const authBox = document.getElementById('auth-box');
+    const statusEl = document.getElementById('status');
+    const roomsEl = document.getElementById('rooms');
+    const overallBar = document.getElementById('overall-bar');
+    const overallLbl = document.getElementById('overall-label');
 
-    const filterInput = document.getElementById("filter");
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const signupBtn = document.getElementById('signup-btn');
+    const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.createElement('button');
+    logoutBtn.textContent = 'Log out';
+    logoutBtn.className = 'btn';
+    logoutBtn.id = 'logout-btn';
+    document.querySelector('header .hi').appendChild(logoutBtn);
+    logoutBtn.style.display = 'none';
 
-    // ... [Auth + Project handling code same as before] ...
+    const projectBox = document.getElementById('project-box');
+    const projectNameInput = document.getElementById('project-name');
+    const projectAddressInput = document.getElementById('project-address');
+    const useProjectBtn = document.getElementById('use-project');
 
-    async function renderSignoffs(projectId) {
-      const tbody = document.querySelector("#signoff-table tbody");
-      tbody.innerHTML = "";
-      const { data: signs } = await sb
-        .from("signoffs")
-        .select("*, rooms(room_name)")
-        .eq("project_id", projectId);
+    const filterInput = document.getElementById('filter');
+    const signoffsTableBody = document.querySelector('#signoffs-table tbody');
+    const photosList = document.getElementById('photos-list');
 
-      signs.forEach(s => {
-        const tr = document.createElement("tr");
-        tr.dataset.room = s.rooms?.room_name || "";
-        tr.dataset.trade = s.trade;
-        tr.dataset.user = s.user_id || "Unknown";
-        tr.innerHTML = `
-          <td>${s.rooms?.room_name || ''}</td>
-          <td>${s.trade}</td>
-          <td>${s.user_id || 'Unknown'}</td>
-          <td>${new Date(s.signed_at).toLocaleString()}</td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
+    let session = null;
+    let currentProjectId = null;
 
-    async function renderPhotosDashboard(projectId) {
-      const gallery = document.getElementById("photo-gallery");
-      gallery.innerHTML = "";
-      const { data: photos } = await sb.from("photos").select("*").eq("project_id", projectId);
+    // Helpers
+    const slug = s => (s||'').toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9\-]/g,'');
+    const percent = (n,d) => d === 0 ? 0 : Math.round((n/d)*100);
 
-      photos.forEach(p => {
-        const url = sb.storage.from("photos").getPublicUrl(p.storage_path).data.publicUrl;
-        const div = document.createElement("div");
-        div.className = "gallery-item";
-        div.dataset.room = p.room_name || "";
-        div.dataset.trade = p.trade || "";
-        div.dataset.user = p.uploaded_by || "";
-        div.innerHTML = `
-          <img src="${url}" style="width:100%; border-radius:6px;" />
-          <div style="font-size:0.8rem; margin-top:4px;">
-            ${p.room_name || ''}<br/>
-            <em>${p.uploaded_by}</em><br/>
-            <small>${new Date(p.uploaded_at).toLocaleString()}</small>
-          </div>
-        `;
-        gallery.appendChild(div);
-      });
-    }
-
-    // Filter function
-    filterInput.addEventListener("input", () => {
-      const term = filterInput.value.toLowerCase();
-      // Sign-offs
-      document.querySelectorAll("#signoff-table tbody tr").forEach(row => {
-        const text = `${row.dataset.room} ${row.dataset.trade} ${row.dataset.user}`.toLowerCase();
-        row.style.display = text.includes(term) ? "" : "none";
-      });
-      // Photos
-      document.querySelectorAll("#photo-gallery .gallery-item").forEach(item => {
-        const text = `${item.dataset.room} ${item.dataset.trade} ${item.dataset.user}`.toLowerCase();
-        item.style.display = text.includes(term) ? "" : "none";
-      });
+    // Auth
+    signupBtn.addEventListener('click', async () => {
+      const email = (emailInput.value||'').trim();
+      const pw = passwordInput.value||'';
+      if (!email || !pw) return alert('Enter email and password');
+      const { error } = await sb.auth.signUp({ email, password: pw });
+      if (error) return alert(error.message);
+      alert('Sign up successful. Check your email to confirm (if required).');
     });
+
+    loginBtn.addEventListener('click', async () => {
+      const email = (emailInput.value||'').trim();
+      const pw = passwordInput.value||'';
+      if (!email || !pw) return alert('Enter email and password');
+      const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+      if (error) return alert(error.message);
+    });
+
+    logoutBtn.addEventListener('click', async () => { await sb.auth.signOut(); });
+
+    sb.auth.onAuthStateChange((_event, s) => {
+      session = s?.session ?? s ?? null;
+      renderAuthUI();
+    });
+
+    (async () => {
+      const { data } = await sb.auth.getSession();
+      session = data.session;
+      renderAuthUI();
+    })();
+
+    function renderAuthUI(){
+      if (session) {
+        statusEl.textContent = 'Signed in';
+        authBox.style.display = 'none';
+        projectBox.style.display = 'block';
+        logoutBtn.style.display = 'inline-block';
+      } else {
+        statusEl.textContent = 'Signed out';
+        authBox.style.display = 'block';
+        projectBox.style.display = 'none';
+        logoutBtn.style.display = 'none';
+        roomsEl.innerHTML = '';
+        overallBar.style.width = '0%';
+        overallLbl.textContent = '0%';
+      }
+    }
+
+    // Use/Create project (auto-seed)
+    useProjectBtn.addEventListener('click', async () => {
+      const name = projectNameInput.value.trim();
+      const addr = projectAddressInput.value.trim();
+      if (!name) return alert('Enter a project name');
+      useProjectBtn.disabled = true;
+
+      // Try open existing by name (and optional address)
+      const { data: existing, error: findErr } = await sb
+        .from('projects')
+        .select('id,name,site_address')
+        .eq('name', name)
+        .maybeSingle();
+
+      if (findErr) { useProjectBtn.disabled = false; return alert(findErr.message); }
+
+      if (existing) {
+        currentProjectId = existing.id;
+      } else {
+        // Create + seed via RPC
+        const { data: newId, error: rpcErr } = await sb.rpc('seed_full_project', { p_name: name, p_site: addr });
+        if (rpcErr) { useProjectBtn.disabled = false; return alert(rpcErr.message); }
+        currentProjectId = newId;
+        // Seed trade tasks
+        const { error: seedErr } = await sb.rpc('seed_trade_tasks_for_project', { p_project_id: currentProjectId });
+        if (seedErr) console.warn('Task seed:', seedErr.message);
+      }
+
+      await renderEverything(currentProjectId);
+      useProjectBtn.disabled = false;
+    });
+
+    // Filter dashboard
+    filterInput.addEventListener('input', () => {
+      const q = filterInput.value.toLowerCase();
+      for (const row of signoffsTableBody.querySelectorAll('tr')) {
+        const txt = row.textContent.toLowerCase();
+        row.style.display = txt.includes(q) ? '' : 'none';
+      }
+      for (const card of photosList.querySelectorAll('[data-photo-card]')) {
+        const txt = card.textContent.toLowerCase();
+        card.style.display = txt.includes(q) ? '' : 'none';
+      }
+    });
+
+    // ---------- Rendering ----------
+    async function renderEverything(projectId){
+      await Promise.all([renderFloors(projectId), renderDashboard(projectId)]);
+      await updateOverallProgress(projectId);
+    }
+
+    async function renderFloors(projectId){
+      roomsEl.innerHTML = '';
+
+      const { data: rooms, error } = await sb
+        .from('rooms')
+        .select('id,floor_name,room_name')
+        .eq('project_id', projectId)
+        .order('floor_name')
+        .order('room_name');
+      if (error) return roomsEl.innerHTML = `<div class="card">Rooms error: ${error.message}</div>`;
+
+      // group by floor (respect fixed order)
+      const floorMap = new Map();
+      for (const r of rooms){
+        const f = r.floor_name || 'Other';
+        if (!floorMap.has(f)) floorMap.set(f, []);
+        floorMap.get(f).push(r);
+      }
+      const orderedFloors = [...floorMap.keys()].sort(
+        (a,b) => FLOOR_ORDER.indexOf(a) - FLOOR_ORDER.indexOf(b)
+      );
+
+      for (const floor of orderedFloors){
+        const floorDetails = document.createElement('details');
+        const sum = document.createElement('summary');
+
+        // floor progress shell
+        const floorBar = document.createElement('div');
+        floorBar.className = 'bar';
+        floorBar.style.width = '200px';
+        floorBar.style.marginLeft = 'auto';
+        const floorBarFill = document.createElement('span');
+        floorBar.appendChild(floorBarFill);
+
+        const floorCount = document.createElement('span');
+        floorCount.className = 'small pill';
+
+        sum.append(document.createTextNode(floor+' '), floorCount, floorBar);
+        floorDetails.appendChild(sum);
+
+        // Rooms list
+        const floorCard = document.createElement('div');
+        floorCard.className = 'card';
+        floorDetails.appendChild(floorCard);
+
+        roomsEl.appendChild(floorDetails);
+
+        // render rooms for this floor
+        await renderRooms(projectId, floorMap.get(floor), floorCard, async (done,total)=>{
+          // callback to refresh floor progress
+          floorBarFill.style.width = percent(done,total) + '%';
+          floorCount.textContent = `${done}/${total}`;
+        });
+      }
+    }
+
+    async function renderRooms(projectId, rooms, container, onProgress){
+      container.innerHTML = '';
+      let totalTasks = 0, doneTasks = 0;
+
+      for (const room of rooms){
+        // summary
+        const d = document.createElement('details');
+        const s = document.createElement('summary');
+        const count = document.createElement('span');
+        count.className = 'small pill';
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.style.width = '160px';
+        bar.style.marginLeft = 'auto';
+        const fill = document.createElement('span'); bar.appendChild(fill);
+        s.append(document.createTextNode(room.room_name+' '), count, bar);
+        d.appendChild(s);
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        d.appendChild(card);
+
+        container.appendChild(d);
+
+        // render trades/tasks
+        const { done, total } = await renderTrades(projectId, room, card);
+        totalTasks += total; doneTasks += done;
+
+        // room progress
+        count.textContent = `${done}/${total}`;
+        fill.style.width = percent(done,total)+'%';
+      }
+
+      if (onProgress) onProgress(doneTasks,totalTasks);
+    }
+
+    async function renderTrades(projectId, room, container){
+      container.innerHTML = '';
+      let total = 0, done = 0;
+
+      // pull tasks for this room
+      const { data: tasks, error } = await sb
+        .from('tasks')
+        .select('id,trade,task,done,notes')
+        .eq('room_id', room.id)
+        .order('trade')
+        .order('task');
+      if (error) { container.textContent = 'Tasks error: '+error.message; return {done,total}; }
+
+      // Group tasks by trade
+      const byTrade = new Map();
+      for (const t of tasks){
+        if (!byTrade.has(t.trade)) byTrade.set(t.trade, []);
+        byTrade.get(t.trade).push(t);
+      }
+
+      for (const [trade, list] of byTrade){
+        const conf = TRADES[trade] || { color:'#222' };
+
+        const tradeBox = document.createElement('div');
+        tradeBox.className = 'tradeBox';
+
+        const head = document.createElement('div');
+        head.className = 'tradeHeader';
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        dot.style.background = conf.color;
+        const title = document.createElement('strong');
+        title.textContent = trade;
+        const signBtn = document.createElement('button');
+        signBtn.className = 'btn ghost';
+        signBtn.textContent = 'Sign off this trade';
+        signBtn.style.marginLeft = 'auto';
+        head.append(dot, title, signBtn);
+        tradeBox.appendChild(head);
+
+        // sign-off
+        signBtn.addEventListener('click', async ()=>{
+          if (!session) return alert('Sign in first');
+          const { error: se } = await sb
+            .from('sign_offs')
+            .insert({
+              project_id: projectId,
+              room_id: room.id,
+              trade,
+              signed_by: session.user.id
+            });
+          if (se) return alert(se.message);
+          alert('Signed off.');
+          await renderDashboard(projectId);
+        });
+
+        for (const t of list){
+          total += 1; if (t.done) done += 1;
+          const row = document.createElement('div');
+          row.className = 'task';
+
+          // checkbox + name
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = !!t.done;
+
+          const label = document.createElement('div');
+          label.innerHTML = `<strong>${t.task}</strong><div class="small muted">To-do</div>`;
+
+          // photo picker
+          const picker = document.createElement('input');
+          picker.type = 'file';
+          picker.accept = 'image/*';
+          picker.capture = 'environment';
+
+          row.append(cb, label, picker);
+
+          // notes
+          const notes = document.createElement('textarea');
+          notes.className = 'input notes';
+          notes.placeholder = 'Notes';
+          notes.value = t.notes || '';
+          row.appendChild(notes);
+
+          // existing photos for this task
+          const photoWrap = document.createElement('div');
+          photoWrap.className = 'photos';
+          row.appendChild(photoWrap);
+          loadTaskPhotos(projectId, t.id, photoWrap);
+
+          // events
+          cb.addEventListener('change', async ()=>{
+            const { error: e } = await sb.from('tasks').update({ done: cb.checked }).eq('id', t.id);
+            if (e) { alert(e.message); cb.checked = !cb.checked; return; }
+            if (cb.checked) done += 1; else done -= 1;
+            await updateOverallProgress(projectId);
+          });
+
+          let notesTimer;
+          notes.addEventListener('input', ()=>{
+            clearTimeout(notesTimer);
+            notesTimer = setTimeout(async ()=>{
+              await sb.from('tasks').update({ notes: notes.value }).eq('id', t.id);
+            }, 500);
+          });
+
+          picker.addEventListener('change', async ()=>{
+            if (!picker.files || !picker.files[0]) return;
+            if (!session) return alert('Sign in first');
+            const file = picker.files[0];
+            const path = `${projectId}/${room.id}/${t.id}/${Date.now()}-${slug(file.name)}`;
+            const { error: upErr } = await sb.storage.from('photos').upload(path, file, { upsert:false });
+            if (upErr) return alert(upErr.message);
+
+            // record photo (who uploaded)
+            const { error: insErr } = await sb.from('photos').insert({
+              project_id: projectId, room_id: room.id, task_id: t.id,
+              path, uploaded_by: session.user.id
+            });
+            if (insErr) return alert(insErr.message);
+
+            picker.value = '';
+            await loadTaskPhotos(projectId, t.id, photoWrap);
+            await renderDashboard(projectId); // refresh “All Photos”
+          });
+
+          tradeBox.appendChild(row);
+        }
+
+        container.appendChild(tradeBox);
+      }
+
+      return { done, total };
+    }
+
+    async function loadTaskPhotos(projectId, taskId, wrap){
+      wrap.innerHTML = '';
+      const { data, error } = await sb
+        .from('photos')
+        .select('id,path,uploaded_by,uploaded_at,profiles:uploaded_by(email)')
+        .eq('project_id', projectId).eq('task_id', taskId).order('uploaded_at',{ascending:false});
+      if (error) return;
+
+      for (const p of data){
+        const { data: url } = sb.storage.from('photos').getPublicUrl(p.path);
+        const card = document.createElement('div');
+        card.style.display='inline-flex'; card.style.flexDirection='column'; card.style.alignItems='center';
+        const img = document.createElement('img');
+        img.src = url.publicUrl;
+        const cap = document.createElement('div');
+        cap.className='small muted';
+        cap.textContent = (p.profiles?.email||'') + ' • ' + new Date(p.uploaded_at).toLocaleString();
+        card.appendChild(img);
+        card.appendChild(cap);
+        wrap.appendChild(card);
+      }
+    }
+
+    async function renderDashboard(projectId){
+      // Sign-offs
+      const { data: so, error: e1 } = await sb
+        .from('sign_offs')
+        .select('id,trade,signed_at,rooms(room_name,floor_name),profiles:signed_by(email)')
+        .eq('project_id', projectId)
+        .order('signed_at',{ascending:false})
+        .limit(200);
+      if (!e1){
+        signoffsTableBody.innerHTML = '';
+        for (const r of so){
+          const tr = document.createElement('tr');
+          const when = new Date(r.signed_at).toLocaleString();
+          tr.innerHTML = `<td>${r.rooms?.floor_name||''} — ${r.rooms?.room_name||''}</td>
+                          <td>${r.trade}</td>
+                          <td>${r.profiles?.email||''}</td>
+                          <td>${when}</td>`;
+          signoffsTableBody.appendChild(tr);
+        }
+      }
+
+      // Photos list (flat)
+      const { data: ph, error: e2 } = await sb
+        .from('photos')
+        .select('id,path,uploaded_at,rooms(room_name,floor_name),profiles:uploaded_by(email)')
+        .eq('project_id', projectId)
+        .order('uploaded_at',{ascending:false})
+        .limit(200);
+      if (!e2){
+        photosList.innerHTML = '';
+        for (const p of ph){
+          const { data: url } = sb.storage.from('photos').getPublicUrl(p.path);
+          const card = document.createElement('div');
+          card.setAttribute('data-photo-card','');
+          card.style.display='inline-flex'; card.style.flexDirection='column'; card.style.alignItems='center';
+          card.style.marginRight='6px';
+          const img = document.createElement('img');
+          img.src = url.publicUrl;
+          const cap = document.createElement('div');
+          cap.className='small muted';
+          const roomTxt = `${p.rooms?.floor_name||''} — ${p.rooms?.room_name||''}`;
+          cap.textContent = `${roomTxt} • ${p.profiles?.email||''} • ${new Date(p.uploaded_at).toLocaleString()}`;
+          card.appendChild(img); card.appendChild(cap);
+          photosList.appendChild(card);
+        }
+      }
+    }
+
+    async function updateOverallProgress(projectId){
+      const { data, error } = await sb
+        .from('tasks')
+        .select('done', { count: 'exact', head: false })
+        .eq('project_id', projectId);
+      if (error) return;
+      const total = data.length;
+      const done = data.filter(t => t.done).length;
+      const pct = percent(done,total);
+      overallBar.style.width = pct + '%';
+      overallLbl.textContent = pct + '%';
+    }
+
+    // Try to resume last project name from localStorage (optional nicety)
+    const last = localStorage.getItem('mpj-last-project');
+    if (last) projectNameInput.value = last;
+    projectNameInput.addEventListener('change', () => {
+      localStorage.setItem('mpj-last-project', projectNameInput.value.trim());
+    });
+  })();
   </script>
 </body>
 </html>
