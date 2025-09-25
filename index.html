@@ -381,7 +381,7 @@ async function renderFloors(pid){
     refreshProgressUI();
     await renderSignoffs(pid);
     await renderAllPhotos(pid);
-  } // <-- closes renderFloors
+  } 
 
     function roomBlock(r){
       const rTasks = tasksCache.filter(t=>t.room_id===r.id);
