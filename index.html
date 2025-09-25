@@ -600,13 +600,13 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
      btn.textContent = 'Signed';
         btn.disabled = true;
 
-        await renderDash(currentProjectId); // refresh signoffs
+       await renderDash(currentProjectId); // refresh signoffs
       } catch (err) {
         alert(err.message || String(err));
       }
     }); // end global click handler
 
-  })(); // end async IIFE
+})(); // end async IIFE
 </script>
 </body>
 </html>
