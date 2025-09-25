@@ -352,7 +352,7 @@ async function renderFloors(pid){
         return a.localeCompare(b);
       });
 
-      // build HTML
+     // build HTML
 const out = [];
 for (const fname of ordered) {
   const fRooms = floors[fname].sort(by('room_name'));
@@ -366,10 +366,10 @@ for (const fname of ordered) {
       <summary class="row" style="gap:1rem;align-items:center">
         <strong>${safe(fname)}</strong>
         <span class="small muted">${floorDone}/${floorTotal}</span>
-       <div class="progress" style="flex:1;max-width:380px">
-  <span style="width:${floorPct}%"></span>
-</div>
-<span class="small muted">${floorPct}%</span>
+        <div class="progress" style="flex:1;max-width:380px">
+          <span style="width:${floorPct}%"></span>
+        </div>
+        <span class="small muted">${floorPct}%</span>
       </summary>
       <div class="body">
         ${fRooms.map(r => roomBlock(r)).join('')}
@@ -385,6 +385,7 @@ await renderSignoffs(pid);
 await renderAllPhotos(pid);
 } // <-- closes async function renderFloors(pid)
 
+// ===== helpers used above =====
 function roomBlock(r){
   const rTasks = tasksCache.filter(t => String(t.room_id) === String(r.id));
   const total = rTasks.length || 1;
@@ -408,25 +409,7 @@ function roomBlock(r){
   `;
 }
 
-    function roomBlock(r){
-      const rTasks = tasksCache.filter(t=>t.room_id===r.id);
-      const total = rTasks.length || 1;
-      const done = rTasks.filter(t=>t.done).length;
-      const pct = Math.round(100*done/total);
-      return `
-        <details class="card" data-room="${r.id}">
-          <summary class="row" style="gap:1rem;align-items:center">
-            <strong>${safe(r.room_name)}</strong>
-            <span class="small muted">${done}/${total}</span>
-            <div class="progress" style="flex:1;max-width:300px"><span style="width:${pct}%"></span></div>
-            <span class="small muted">${pct}%</span>
-          </summary>
-          <div class="body" data-room-body="${r.id}">
-            ${tradeBlocks(r.id)}
-          </div>
-        </details>
-      `;
-    }
+
 
     function tradeBlocks(roomId){
       return TRADE_DEFS.map(td=>{
