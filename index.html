@@ -352,7 +352,7 @@ async function renderFloors(pid){
         return a.localeCompare(b);
       });
 
-     // build HTML
+  // build HTML
 const out = [];
 for (const fname of ordered) {
   const fRooms = floors[fname].sort(by('room_name'));
@@ -361,8 +361,8 @@ for (const fname of ordered) {
   const floorDone = floorTaskList.filter(t => t.done).length;
   const floorPct = Math.round(100 * floorDone / floorTotal);
 
-  out.push(`
-    <details class="card" data-floor="${safe(fname)}">
+  out.push(
+    `<details class="card" data-floor="${safe(fname)}">
       <summary class="row" style="gap:1rem;align-items:center">
         <strong>${safe(fname)}</strong>
         <span class="small muted">${floorDone}/${floorTotal}</span>
@@ -374,8 +374,8 @@ for (const fname of ordered) {
       <div class="body">
         ${fRooms.map(r => roomBlock(r)).join('')}
       </div>
-    </details>
-  `);
+    </details>`
+  );
 }
 
 roomsEl.innerHTML = out.join('');
