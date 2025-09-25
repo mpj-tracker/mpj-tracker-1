@@ -5,48 +5,57 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>MPJ Tracker</title>
 
+  <!-- Brand -->
   <meta name="theme-color" content="#0b5f3b"/>
-  <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+  <link rel="icon" href="/favicon.ico"/>
   <link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png"/>
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 
-  <!-- Supabase v2 UMD -->
+  <!-- Supabase v2 (single include) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     :root{
-      --brand:#0b5f3b; --accent:#0b5f3b; --muted:#f3f6f6; --text:#111827; --card:#ffffff;
-      --joinery:#198754; --plumbing:#0d6efd; --electrical:#dc3545; --plasterer:#6f42c1;
-      --decorators:#fd7e14; --tiling:#85e3e3; --special:#20c997; --chip:#eef1f4;
+      --brand:#0b5f3b; --text:#111827; --card:#fff; --chip:#eef1f4;
+      --joinery:#198754; --plumbing:#0d6efd; --electrical:#dc3545;
+      --plasterer:#6f42c1; --decorators:#fd7e14; --tiling:#85e3e3; --special:#20c997;
     }
     *{box-sizing:border-box} html,body{height:100%}
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Segoe UI Emoji";
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
          background:#fff;color:var(--text)}
-    header{position:sticky;top:0;background:var(--brand);color:#fff;border-bottom:2px solid rgba(0,0,0,.1)}
+    header{position:sticky;top:0;background:var(--brand);color:#fff}
     .bar{max-width:1200px;margin:0 auto;display:flex;gap:.75rem;align-items:center;padding:.6rem .9rem}
     .brand{display:flex;gap:.6rem;align-items:center}
-    .brand img{height:28px;width:auto}
+    .brand img{height:28px}
     .pill{margin-left:auto;background:rgba(255,255,255,.15);padding:.35rem .6rem;border-radius:999px;font-weight:600}
     main{max-width:1200px;margin:1rem auto;padding:0 .9rem}
     .card{background:var(--card);border:1px solid #e5e7eb;border-radius:12px;padding:1rem;margin:.75rem 0}
     .row{display:flex;gap:1rem;align-items:center}
-    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:1rem}
+    .grid{display:grid;grid-template-columns:1fr;gap:1rem}
     .btn{border:none;background:#e8eef0;padding:.55rem .85rem;border-radius:9px;cursor:pointer}
     .btn.accent{background:#fff;color:var(--brand);border:1px solid var(--brand);font-weight:600}
     .btn.right{margin-left:auto}
     .input{width:100%;padding:.6rem .7rem;border-radius:9px;border:1px solid #e5e7eb;background:#fff}
     .muted{color:#6b7280} .small{font-size:.85rem}
-    details.card{padding:0} details.card > summary{list-style:none;padding:1rem;border-radius:12px;cursor:pointer}
-    details.card[open] > summary{border-bottom:1px solid #eff2f4;border-bottom-left-radius:0;border-bottom-right-radius:0}
-    details.card > .body{padding:1rem}
+    details.card{padding:0} details.card>summary{list-style:none;padding:1rem;border-radius:12px;cursor:pointer}
+    details.card[open]>summary{border-bottom:1px solid #eff2f4;border-bottom-left-radius:0;border-bottom-right-radius:0}
+    details.card>.body{padding:1rem}
     .chip{display:inline-flex;align-items:center;gap:.35rem;background:var(--chip);padding:.2rem .45rem;border-radius:999px;font-size:.8rem}
     .progress{height:10px;background:#e9eff2;border-radius:999px;overflow:hidden}
-    .progress > span{display:block;height:100%;background:var(--brand)}
+    .progress>span{display:block;height:100%;background:var(--brand)}
     .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:.5rem}
     .thumbs img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;border:1px solid #e6eaee;cursor:pointer}
-    .task{border:1px dashed #e5e7eb;border-radius:12px;padding:.75rem;margin:.5rem 0}
+    .task{border:1px dashed #e5e7eb;border-radius:12px;padding:.75rem;margin:.6rem 0}
     .note{width:100%;min-height:70px;border-radius:10px;border:1px solid #e5e7eb;padding:.6rem}
     .hidden{display:none}
+    /* trade chips */
+    .trade-Joinery .chip.trade{background:var(--joinery);color:#fff}
+    .trade-Plumbing .chip.trade{background:var(--plumbing);color:#fff}
+    .trade-Electrical .chip.trade{background:var(--electrical);color:#fff}
+    .trade-Plasterer .chip.trade{background:var(--plasterer);color:#fff}
+    .trade-Decorators .chip.trade{background:var(--decorators);color:#fff}
+    .trade-Tiling .chip.trade{background:var(--tiling);color:#000}
+    .trade-Specialist .chip.trade{background:var(--special);color:#000}
   </style>
 </head>
 <body>
@@ -69,6 +78,7 @@
         <input id="password" class="input" placeholder="Enter your password" type="password" style="max-width:180px"/>
         <button id="signup-btn" class="btn">Sign Up</button>
         <button id="login-btn" class="btn">Log In</button>
+        <button id="logout-btn" class="btn right">Sign out</button>
       </div>
     </div>
 
@@ -91,7 +101,6 @@
         <strong>Overall Progress</strong>
         <div class="progress" style="flex:1;max-width:540px"><span id="overall-bar" style="width:0%"></span></div>
         <span id="overall-pct" class="small muted">0%</span>
-        <button id="logout-btn" class="btn right">Sign out</button>
       </div>
 
       <details id="signoffs-block" class="card">
@@ -110,13 +119,15 @@
   </main>
 
   <script defer>
-  (async function(){
-    /* ===== 1) Supabase ===== */
+  (async function () {
+    /* ===== 1) Supabase client ===== */
     const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+    });
 
-    /* ===== 2) DOM ===== */
+    /* ===== 2) DOM refs ===== */
     const authBox = document.getElementById('auth-box');
     const projectBox = document.getElementById('project-box');
     const dash = document.getElementById('dash');
@@ -140,11 +151,10 @@
     const overallPct = document.getElementById('overall-pct');
 
     /* ===== 3) Helpers/State ===== */
-    const FLOOR_ORDER = ['Basement','Ground Floor','1st Floor','2nd Floor','Other'];
+    const FLOOR_ORDER = ['Basement','Ground Floor','1st Floor','2nd Floor','Other','Garage','Roof'];
     const safe = s => (s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-    const by = (k) => (a,b)=> (a[k]||'').localeCompare(b[k]||'');
+    const by = k => (a,b)=> (a[k]||'').localeCompare(b[k]||'');
 
-    // Trade normalisation (joiners/joinery → Joinery, etc.)
     const TRADE_ALIASES = {
       'joiners':'Joinery','joiner':'Joinery','joinery':'Joinery',
       'electricians':'Electrical','electrician':'Electrical','electrical':'Electrical',
@@ -154,11 +164,7 @@
       'tiler':'Tiling','tiling':'Tiling',
       'specialist':'Specialist','specialists':'Specialist'
     };
-    const canonTrade = t => {
-      if(!t) return '';
-      const k = String(t).trim().toLowerCase();
-      return TRADE_ALIASES[k] || t;
-    };
+    const canonTrade = t => { if(!t) return ''; const k = String(t).trim().toLowerCase(); return TRADE_ALIASES[k] || t; };
 
     const TRADE_DEFS = [
       { name:'Joinery', phases:['First fix','Second fix','Extras'] },
@@ -170,144 +176,91 @@
       { name:'Specialist', phases:['Extras'] },
     ];
 
-    let session = null, currentUser = null, currentProjectId = null;
-let roomsCache = [], tasksCache = [];
+    let session=null, currentUser=null, currentProjectId=null;
+    let roomsCache=[], tasksCache=[];
 
-// UI state toggles
-const showAuth = () => {
-  authBox.classList.remove('hidden');
-  projectBox.classList.add('hidden');
-  dash.classList.add('hidden');
-  roomsEl.innerHTML = '';
-};
-const showProject = () => {
-  authBox.classList.add('hidden');
-  projectBox.classList.remove('hidden');
-  dash.classList.add('hidden');
-  roomsEl.innerHTML = '';
-};
-const showApp = () => {
-  authBox.classList.add('hidden');
-  projectBox.classList.add('hidden');
-  dash.classList.remove('hidden');
-};
+    function showAuth(){ authBox.classList.remove('hidden'); projectBox.classList.add('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
+    function showProject(){ authBox.classList.add('hidden'); projectBox.classList.remove('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
+    function showApp(){ authBox.classList.add('hidden'); projectBox.classList.add('hidden'); dash.classList.remove('hidden'); }
 
-/* ===== 4) Auth ===== */
-document.getElementById('signup-btn').addEventListener('click', async () => {
-  const email = (emailInput.value || '').trim();
-  const pw = passwordInput.value || '';
-  if (!email || !pw) return alert('Please enter email and password');
-  const { error } = await sb.auth.signUp({ email, password: pw });
-  if (error) return alert(error.message);
-  alert('Sign up OK! Check your inbox if confirmation is required.');
-});
+    /* ===== 4) Auth (password) ===== */
+    signupBtn.addEventListener('click', async ()=>{
+      const email=(emailInput.value||'').trim(), pw=passwordInput.value||'';
+      if(!email||!pw) return alert('Please enter email and password');
+      const { error } = await sb.auth.signUp({ email, password: pw });
+      if(error) return alert(error.message);
+      alert('Sign up OK! If confirmation is required, check your email.');
+    });
 
-document.getElementById('login-btn').addEventListener('click', async () => {
-  const email = (emailInput.value || '').trim();
-  const pw = passwordInput.value || '';
-  if (!email || !pw) return alert('Please enter email and password');
-  const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
-  if (error) return alert(error.message);
-  session = data.session;
-  currentUser = session?.user || null;
-  authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email}` : 'Signed out';
-  if (currentUser) showProject(); else showAuth();
-});
+    loginBtn.addEventListener('click', async ()=>{
+      const email=(emailInput.value||'').trim(), pw=passwordInput.value||'';
+      if(!email||!pw) return alert('Please enter email and password');
+      const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+      if(error) return alert(error.message);
+      session = data.session; currentUser = session?.user || null;
+      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email}` : 'Signed out';
+      if(currentUser) showProject(); else showAuth();
+    });
 
-logoutBtn.addEventListener('click', async () => {
-  await sb.auth.signOut();
-  session = null;
-  currentUser = null;
-  authStateEl.textContent = 'Signed out';
-  showAuth();
-});
+    logoutBtn.addEventListener('click', async ()=>{
+      await sb.auth.signOut();
+      session=null; currentUser=null; authStateEl.textContent='Signed out'; showAuth();
+    });
 
-sb.auth.onAuthStateChange(async () => {
-  const g = await sb.auth.getSession();
-  session = g.data.session;
-  currentUser = session?.user || null;
-  authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email}` : 'Signed out';
-  if (currentUser) showProject(); else showAuth();
-});
+    sb.auth.onAuthStateChange(async ()=>{
+      const { data } = await sb.auth.getSession();
+      session = data.session; currentUser = session?.user || null;
+      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email}` : 'Signed out';
+      if(currentUser) showProject(); else showAuth();
+    });
 
-// initial
-(async () => {
-  const { data } = await sb.auth.getSession();
-  session = data.session;
-  currentUser = session?.user || null;
-  authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email}` : 'Signed out';
-  if (currentUser) showProject(); else showAuth();
-})();
-
-    
-   /* ----- 5) Use/Create project ----- */
-useProjectBtn.addEventListener('click', async () => {
-  const name = (projectNameInput.value || '').trim();
-  const addr = (projectAddressInput.value || '').trim();
-  if (!name) return alert('Enter a project name');
-  useProjectBtn.disabled = true;
-
-  // ---- find existing for this user (same name) ----
-  const { data: existing, error: findErr } = await sb
-    .from('projects')
-    .select('id')
-    .eq('user_id', currentUser.id)
-    .eq('name', name)
-    .limit(1);
-
-  if (findErr) {
-    useProjectBtn.disabled = false;
-    return alert(findErr.message);
-  }
-
-  if (existing?.length) {
-    // reuse the existing project
-    currentProjectId = existing[0].id;
-  } else {
-    // ---- insert new project ----
-    const { data: ins, error: insErr } = await sb
-      .from('projects')
-      .insert({ name, site_address: addr, user_id: currentUser.id })
-      .select('id')
-      .single();
-
-    if (insErr) {
-      useProjectBtn.disabled = false;
-      return alert(insErr.message);
+    // initial
+    {
+      const { data } = await sb.auth.getSession();
+      session = data.session; currentUser = session?.user || null;
+      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email}` : 'Signed out';
+      if(currentUser) showProject(); else showAuth();
     }
 
-    currentProjectId = ins.id;
+    /* ===== 5) Use/Create Project ===== */
+    useProjectBtn.addEventListener('click', async ()=>{
+      const name=(projectNameInput.value||'').trim();
+      const addr=(projectAddressInput.value||'').trim();
+      if(!name) return alert('Enter a project name');
+      useProjectBtn.disabled = true;
 
-    // Optional seeds (best-effort)
-    const { error: seedErr1 } = await sb.rpc('seed_full_project', {
-      p_name: name,
-      p_site: addr,
+      const { data: existing, error: findErr } = await sb
+        .from('projects').select('id').eq('user_id', currentUser.id).eq('name', name).limit(1);
+      if(findErr){ useProjectBtn.disabled=false; return alert(findErr.message); }
+
+      if(existing?.length){
+        currentProjectId = existing[0].id;
+      } else {
+        const { data: ins, error: insErr } = await sb
+          .from('projects').insert({ name, site_address: addr, user_id: currentUser.id })
+          .select('id').single();
+        if(insErr){ useProjectBtn.disabled=false; return alert(insErr.message); }
+        currentProjectId = ins.id;
+
+        // If you created RPCs, they’ll run; otherwise they quietly skip
+        await sb.rpc('seed_full_project', { p_name: name, p_site: addr }).catch(()=>{});
+        await sb.rpc('seed_trade_tasks_for_project', { p_project_id: currentProjectId }).catch(()=>{});
+      }
+
+      await renderFloors(currentProjectId);
+      showApp();
+      useProjectBtn.disabled = false;
     });
-    if (seedErr1) console.warn('[seed_full_project]', seedErr1);
-
-    const { error: seedErr2 } = await sb.rpc('seed_trade_tasks_for_project', {
-      p_project_id: currentProjectId,
-    });
-    if (seedErr2) console.warn('[seed_trade_tasks_for_project]', seedErr2);
-  }
-
-  // Render and show app
-  await renderFloors(currentProjectId);
-  showApp();
-  useProjectBtn.disabled = false;
-});
 
     /* ===== 6) Render floors/rooms/tasks ===== */
     async function renderFloors(pid){
       roomsEl.innerHTML = '<div class="muted">Loading…</div>';
 
-      // rooms
       const { data: rooms, error: roomsErr } = await sb
-        .from('rooms').select('id,floor_name,room_name').eq('project_id', pid).order('floor_name');
+        .from('rooms').select('id,floor_name,room_name').eq('project_id', pid);
       if(roomsErr){ roomsEl.innerHTML = '<div class="muted">Could not load rooms.</div>'; return; }
       roomsCache = rooms.slice();
 
-      // tasks (for progress & lists)
       const { data: tasks } = await sb
         .from('tasks').select('id,room_id,trade,phase,description,done').in('room_id', rooms.map(r=>r.id));
       tasksCache = tasks || [];
@@ -315,8 +268,8 @@ useProjectBtn.addEventListener('click', async () => {
       // group rooms by floor
       const floors = {};
       for(const r of rooms){
-        const key = r.floor_name || 'Other';
-        (floors[key] ||= []).push(r);
+        const k = r.floor_name || 'Other';
+        (floors[k] ||= []).push(r);
       }
 
       // ordered floors
@@ -352,8 +305,7 @@ useProjectBtn.addEventListener('click', async () => {
       }
       roomsEl.innerHTML = out.join('');
       attachRoomHandlers();
-
-      refreshProgressUI(); // set bars
+      refreshProgressUI();
       await renderSignoffs(pid);
       await renderAllPhotos(pid);
     }
@@ -380,21 +332,19 @@ useProjectBtn.addEventListener('click', async () => {
 
     function tradeBlocks(roomId){
       return TRADE_DEFS.map(td=>{
-        const tTasks = tasksCache.filter(
-          t => t.room_id === roomId && canonTrade(t.trade) === td.name
-        );
-        // group by phase
+        const tTasks = tasksCache.filter(t=> t.room_id===roomId && canonTrade(t.trade)===td.name);
         const byPhase = {};
         for(const t of tTasks){
-          const key = t.phase || 'General';
-          (byPhase[key] ||= []).push(t);
+          const k = t.phase || 'General';
+          (byPhase[k] ||= []).push(t);
         }
-        const sections = (td.phases||Object.keys(byPhase)).map(ph=>{
+        const order = td.phases?.length ? td.phases : Object.keys(byPhase);
+        const sections = order.map(ph=>{
           const list = byPhase[ph] || [];
           return `
-            <div class="task">
+            <div class="task trade-${td.name}">
               <div class="row" style="justify-content:space-between">
-                <span class="chip" style="background:var(--brand);color:#fff">${td.name}</span>
+                <span class="chip trade">${td.name}</span>
                 <span class="chip">${safe(ph)}</span>
               </div>
               <div style="margin:.5rem 0">
@@ -428,22 +378,22 @@ useProjectBtn.addEventListener('click', async () => {
       `;
     }
 
+    /* ===== 7) Handlers ===== */
     function attachRoomHandlers(){
-      // checkbox toggles
+      // toggle done
       roomsEl.querySelectorAll('input[type="checkbox"][data-task-id]').forEach(cb=>{
         cb.addEventListener('change', async (e)=>{
           const id = e.target.getAttribute('data-task-id');
-          const { error } = await sb.from('tasks')
-            .update({ done: e.target.checked, updated_at: new Date().toISOString() })
-            .eq('id', id);
+          const done = e.target.checked;
+          const { error } = await sb.from('tasks').update({ done, updated_at: new Date().toISOString() }).eq('id', id);
           if(error) return alert(error.message);
           const t = tasksCache.find(x=>String(x.id)===String(id));
-          if(t) t.done = e.target.checked;
+          if(t) t.done = done;
           refreshProgressUI();
         });
       });
 
-      // notes (debounced save)
+      // notes (debounced)
       const timers = new Map();
       roomsEl.querySelectorAll('textarea[data-note-for]').forEach(ta=>{
         ta.addEventListener('input', ()=>{
@@ -458,40 +408,22 @@ useProjectBtn.addEventListener('click', async () => {
           }, 600));
         });
       });
-// uploads
-roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
-  inp.addEventListener('change', async () => {
-    const file = inp.files?.[0];
-    if (!file) return;
 
-    const [roomId, trade, phase] =
-      (inp.getAttribute('data-upload-for') || '').split(':');
+      // uploads
+      roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp=>{
+        inp.addEventListener('change', async ()=>{
+          const file = inp.files?.[0]; if(!file) return;
+          const [roomId, trade, phase] = (inp.getAttribute('data-upload-for')||'').split(':');
+          const path = `${currentProjectId}/${roomId}/${trade}/${Date.now()}_${file.name}`;
+          const { error: upErr } = await sb.storage.from('photos').upload(path, file, { cacheControl: '3600', upsert:false });
+          if(upErr) return alert(upErr.message);
+          await sb.from('photos').insert({ project_id: currentProjectId, room_id: roomId, trade, phase, path, uploaded_by: currentUser.email }).catch(()=>{});
+          await renderAllPhotos(currentProjectId);
+          alert('Photo uploaded');
+        });
+      });
+    }
 
-    const path = `${currentProjectId}/${roomId}/${trade}/${Date.now()}_${file.name}`;
-
-    // 1) upload to storage
-    const { error: upErr } = await sb.storage
-      .from('photos')
-      .upload(path, file, { cacheControl: '3600', upsert: false });
-    if (upErr) { alert(upErr.message); return; }
-
-    // 2) record in photos table
-    const { error: dbErr } = await sb.from('photos').insert({
-      project_id: currentProjectId,
-      room_id: roomId,
-      trade,
-      phase,
-      path,
-      uploaded_by: currentUser.email
-    });
-    if (dbErr) { alert(dbErr.message); return; }
-
-    // 3) refresh thumbnails
-    await renderAllPhotos(currentProjectId);
-    alert('Photo uploaded');
-  });
-});
-}
     function refreshProgressUI(){
       // per-room
       roomsEl.querySelectorAll('details[data-room]').forEach(roomWrap=>{
@@ -533,17 +465,13 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
       overallPct.textContent = pct + '%';
     }
 
-    /* ===== 7) Dashboard lists ===== */
+    /* ===== 8) Dashboard lists ===== */
     async function renderSignoffs(pid){
       const { data: s, error } = await sb
         .from('signoffs')
         .select('id,created_at,trade,phase,signed_by_name,rooms!inner(room_name)')
-        .eq('project_id', pid)
-        .order('created_at', { ascending:false })
-        .limit(200);
-
+        .eq('project_id', pid).order('created_at', { ascending:false }).limit(200);
       if(error){ allSignoffsEl.innerHTML = '<div class="muted">Error loading sign-offs</div>'; return; }
-
       allSignoffsEl.innerHTML = (s||[]).map(x=>`
         <div class="row" style="gap:.6rem;padding:.25rem 0;border-bottom:1px dashed #eef2f4">
           <span class="chip">${safe(x.rooms?.room_name || 'Room')}</span>
@@ -570,7 +498,7 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
       }
     }
 
-    /* ===== 8) Search (client-side) ===== */
+    /* ===== 9) Search ===== */
     searchInput.addEventListener('input', ()=>{
       const q = (searchInput.value||'').toLowerCase();
       if(!q){ document.querySelectorAll('details[data-floor]').forEach(d=> d.open=false); }
@@ -587,54 +515,28 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
       });
     });
 
-   /* 9) GLOBAL sign-off handler (uses UUID, not email) */
-    document.addEventListener('click', async (e) => {
-      const btn = e.target.closest('.signoff-btn');
-      if (!btn) return;
+    /* ===== 10) Global Sign-off button ===== */
+    document.addEventListener('click', async (e)=>{
+      const btn = e.target.closest('.signoff-btn'); if(!btn) return;
+      if (!currentProjectId || !session?.user) return alert('Please sign in and choose a project first.');
+      const roomId = btn.dataset.roomId || null;
+      const taskId = btn.dataset.taskId || null;
+      const trade = btn.dataset.trade || null;
+      const phase = btn.dataset.phase || null;
+      const whoId = session.user.id;
+      const whoName = session.user.email || session.user.user_metadata?.full_name || 'unknown';
+      if (!roomId || !trade) return alert('Missing room or trade on sign-off button.');
 
-      try {
-        if (!currentProjectId || !session?.user) {
-          alert('Please sign in and choose a project first.');
-          return;
-        }
+      const { error } = await sb.from('signoffs').insert({
+        project_id: currentProjectId, room_id: roomId, task_id: taskId,
+        trade, phase, signed_by: whoId, signed_by_name: whoName
+      });
+      if (error) return alert(error.message);
+      btn.textContent = 'Signed'; btn.disabled = true;
+      await renderSignoffs(currentProjectId);
+    });
 
-        const roomId = btn.dataset.roomId || null;
-        const taskId = btn.dataset.taskId || null; // optional
-        const trade = btn.dataset.trade || null;
-        const phase = btn.dataset.phase || null;
-
-        const whoId = session.user.id;
-        const whoName = session.user.email || session.user.user_metadata?.full_name || 'unknown';
-
-        if (!roomId || !trade) {
-          alert('Missing room or trade on sign-off button.');
-          return;
-        }
-
-        const { error } = await sb.from('signoffs').insert({
-          project_id: currentProjectId,
-          room_id: roomId,
-          task_id: taskId,
-          trade,
-          phase,
-          signed_by: whoId,
-          signed_by_name: whoName
-        });
-        if (error) throw error;
-
-     btn.textContent = 'Signed';
-        btn.disabled = true;
-
-       await renderSignoffs(currentProjectId); // refresh signoffs
-      } catch (err) {
-        alert(err.message || String(err));
-      }
-
-    }); // end global click handler
-
-  // ====== END: everything inside the async IIFE ======
-})(); 
-
-</script>
+  })();
+  </script>
 </body>
 </html>
