@@ -562,34 +562,51 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
       });
     });
 
-    /* ===== 9) Global sign-off (UUID, not email) ===== */
-    document.addEventListener('click', async (e)=>{
-      const btn = e.target.closest('.signoff-btn'); if(!btn) return;
-      try{
-        if(!currentProjectId || !session?.user) return alert('Please sign in and choose a project first.');
+  /* 9) GLOBAL sign-off handler (uses UUID, not email) */
+    document.addEventListener('click', async (e) => {
+      const btn = e.target.closest('.signoff-btn');
+      if (!btn) return;
+
+      try {
+        if (!currentProjectId || !session?.user) {
+          alert('Please sign in and choose a project first.');
+          return;
+        }
+
         const roomId = btn.dataset.roomId || null;
-        const taskId = btn.dataset.taskId || null;
+        const taskId = btn.dataset.taskId || null; // may be empty
         const trade = btn.dataset.trade || null;
         const phase = btn.dataset.phase || null;
-        const whoId = session.user.id;
-        const whoName = session.user.email || 'unknown';
-        if(!roomId || !trade) return alert('Missing room or trade on sign-off button.');
+
+        const whoId = session.user.id; // UUID from auth.users
+        const whoName = session.user.email || session.user.user_metadata?.full_name || 'unknown';
+
+        if (!roomId || !trade) {
+          alert('Missing room or trade on sign-off button.');
+          return;
+        }
+
         const { error } = await sb.from('signoffs').insert({
-          project_id: currentProjectId, room_id: roomId, task_id: taskId,
-          trade, phase, signed_by: whoId, signed_by_name: whoName
+          project_id: currentProjectId,
+          room_id: roomId,
+          task_id: taskId,
+          trade,
+          phase,
+          signed_by: whoId,
+          signed_by_name: whoName
         });
-       if (error) throw error;
+        if (error) throw error;
 
-      btn.textContent = 'Signed';
-      btn.disabled = true;
+        btn.textContent = 'Signed';
+        btn.disabled = true;
 
-      // If your function is named renderDash instead, call that here:
-      await renderSignoffs(currentProjectId);
-    } catch (err) {
-      alert(err.message || String(err));
-    }
-  });
-})();
-</script>
+        await renderDash(currentProjectId); // or renderSignoffs(...) if that's your function
+      } catch (err) {
+        alert(err.message || String(err));
+      }
+    });
+
+  })();
+  </script>
 </body>
 </html>
