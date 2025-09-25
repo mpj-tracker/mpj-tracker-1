@@ -582,8 +582,8 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
         btn.textContent='Signed'; btn.disabled=true;
         await renderSignoffs(currentProjectId);
       }catch(err){ alert(err.message || String(err)); }
+      }
     });
-
   })();
   </script>
 </body>
