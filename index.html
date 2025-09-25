@@ -433,20 +433,25 @@ useProjectBtn.addEventListener('click', async () => {
           }, 600));
         });
       });
-
-     // uploads
-roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp=>{
-  inp.addEventListener('change', async ()=>{
-    const file = inp.files?.[0]; 
+// uploads
+roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
+  inp.addEventListener('change', async () => {
+    const file = inp.files?.[0];
     if (!file) return;
 
-    const [roomId, trade, phase] = inp.getAttribute('data-upload-for').split(':');
+    const [roomId, trade, phase] =
+      (inp.getAttribute('data-upload-for') || '').split(':');
+
     const path = `${currentProjectId}/${roomId}/${trade}/${Date.now()}_${file.name}`;
 
-    const { error: upErr } = await sb.storage.from('photos').upload(path, file, { cacheControl: '3600', upsert: false });
-    if (upErr) return alert(upErr.message);
+    // 1) upload to storage
+    const { error: upErr } = await sb.storage
+      .from('photos')
+      .upload(path, file, { cacheControl: '3600', upsert: false });
+    if (upErr) { alert(upErr.message); return; }
 
-    const { error: insErr } = await sb.from('photos').insert({
+    // 2) record in photos table
+    const { error: dbErr } = await sb.from('photos').insert({
       project_id: currentProjectId,
       room_id: roomId,
       trade,
@@ -454,15 +459,13 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp=>{
       path,
       uploaded_by: currentUser.email
     });
-    if (insErr) return alert(insErr.message);
+    if (dbErr) { alert(dbErr.message); return; }
 
+    // 3) refresh thumbnails
     await renderAllPhotos(currentProjectId);
     alert('Photo uploaded');
   });
 });
-        
-      });
-    }
 
     function refreshProgressUI(){
       // per-room
