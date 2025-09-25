@@ -578,13 +578,18 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
           project_id: currentProjectId, room_id: roomId, task_id: taskId,
           trade, phase, signed_by: whoId, signed_by_name: whoName
         });
-        if(error) throw error;
-        btn.textContent='Signed'; btn.disabled=true;
-        await renderSignoffs(currentProjectId);
-      }catch(err){ alert(err.message || String(err)); }
-      }
+       if (error) throw error;
+
+      btn.textContent = 'Signed';
+      btn.disabled = true;
+
+      // If your function is named renderDash instead, call that here:
+      await renderSignoffs(currentProjectId);
+    } catch (err) {
+      alert(err.message || String(err));
+    }
   });
-  })();
-  </script>
+})();
+</script>
 </body>
 </html>
