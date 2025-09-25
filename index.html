@@ -601,12 +601,12 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
         btn.disabled = true;
 
         await renderDash(currentProjectId); // or renderSignoffs(...) if that's your function
-      } catch (err) {
-        alert(err.message || String(err));
-      }
-    });
+     } catch (err) {
+          alert(err.message || String(err));
+        }
+      }); // closes document.addEventListener
 
-  })();
+    })(); // closes the async IIFE
   </script>
 </body>
 </html>
