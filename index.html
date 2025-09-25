@@ -562,7 +562,7 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
       });
     });
 
-  /* 9) GLOBAL sign-off handler (uses UUID, not email) */
+   /* 9) GLOBAL sign-off handler (uses UUID, not email) */
     document.addEventListener('click', async (e) => {
       const btn = e.target.closest('.signoff-btn');
       if (!btn) return;
@@ -574,11 +574,11 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
         }
 
         const roomId = btn.dataset.roomId || null;
-        const taskId = btn.dataset.taskId || null; // may be empty
+        const taskId = btn.dataset.taskId || null; // optional
         const trade = btn.dataset.trade || null;
         const phase = btn.dataset.phase || null;
 
-        const whoId = session.user.id; // UUID from auth.users
+        const whoId = session.user.id;
         const whoName = session.user.email || session.user.user_metadata?.full_name || 'unknown';
 
         if (!roomId || !trade) {
@@ -600,13 +600,13 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
         btn.textContent = 'Signed';
         btn.disabled = true;
 
-        await renderDash(currentProjectId); // or renderSignoffs(...) if that's your function
-     } catch (err) {
-          alert(err.message || String(err));
-        }
-      }); // closes document.addEventListener
+        await renderDash(currentProjectId);
+      } catch (err) {
+        alert(err.message || String(err));
+      }
+    }); // end global click handler
 
-    })(); // closes the async IIFE
+  })(); <!-- end async IIFE -->
   </script>
 </body>
 </html>
