@@ -214,35 +214,63 @@
       if(currentUser) showProject(); else showAuth();
     }
 
-    /* ===== 5) Use/Create project ===== */
-    useProjectBtn.addEventListener('click', async ()=>{
-      const name=(projectNameInput.value||'').trim();
-      const addr=(projectAddressInput.value||'').trim();
-      if(!name) return alert('Enter a project name');
-      useProjectBtn.disabled = true;
+    
+   /* ----- 5) Use/Create project ----- */
+useProjectBtn.addEventListener('click', async () => {
+  const name = (projectNameInput.value || '').trim();
+  const addr = (projectAddressInput.value || '').trim();
+  if (!name) return alert('Enter a project name');
+  useProjectBtn.disabled = true;
 
-      const { data: existing, error: findErr } = await sb
-        .from('projects').select('id').eq('user_id', currentUser.id).eq('name', name).limit(1);
-      if(findErr){ useProjectBtn.disabled=false; return alert(findErr.message); }
+  // ---- find existing for this user (same name) ----
+  const { data: existing, error: findErr } = await sb
+    .from('projects')
+    .select('id')
+    .eq('user_id', currentUser.id)
+    .eq('name', name)
+    .limit(1);
 
-      if(existing?.length){
-        currentProjectId = existing[0].id;
-      } else {
-        const { data: ins, error: insErr } = await sb
-          .from('projects').insert({ name, site_address: addr, user_id: currentUser.id })
-          .select('id').single();
-        if(insErr){ useProjectBtn.disabled=false; return alert(insErr.message); }
-        currentProjectId = ins.id;
+  if (findErr) {
+    useProjectBtn.disabled = false;
+    return alert(findErr.message);
+  }
 
-        // optional seeds
-        await sb.rpc('seed_full_project', { p_name: name, p_site: addr }).catch(()=>{});
-        await sb.rpc('seed_trade_tasks_for_project', { p_project_id: currentProjectId }).catch(()=>{});
-      }
+  if (existing?.length) {
+    // reuse the existing project
+    currentProjectId = existing[0].id;
+  } else {
+    // ---- insert new project ----
+    const { data: ins, error: insErr } = await sb
+      .from('projects')
+      .insert({ name, site_address: addr, user_id: currentUser.id })
+      .select('id')
+      .single();
 
-      await renderFloors(currentProjectId);
-      showApp();
-      useProjectBtn.disabled=false;
+    if (insErr) {
+      useProjectBtn.disabled = false;
+      return alert(insErr.message);
+    }
+
+    currentProjectId = ins.id;
+
+    // Optional seeds (best-effort)
+    const { error: seedErr1 } = await sb.rpc('seed_full_project', {
+      p_name: name,
+      p_site: addr,
     });
+    if (seedErr1) console.warn('[seed_full_project]', seedErr1);
+
+    const { error: seedErr2 } = await sb.rpc('seed_trade_tasks_for_project', {
+      p_project_id: currentProjectId,
+    });
+    if (seedErr2) console.warn('[seed_trade_tasks_for_project]', seedErr2);
+  }
+
+  // Render and show app
+  await renderFloors(currentProjectId);
+  showApp();
+  useProjectBtn.disabled = false;
+});
 
     /* ===== 6) Render floors/rooms/tasks ===== */
     async function renderFloors(pid){
@@ -406,20 +434,32 @@
         });
       });
 
-      // uploads
-      roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp=>{
-        inp.addEventListener('change', async ()=>{
-          const file = inp.files?.[0]; if(!file) return;
-          const [roomId, trade, phase] = inp.getAttribute('data-upload-for').split(':');
-          const path = `${currentProjectId}/${roomId}/${trade}/${Date.now()}_${file.name}`;
-          const { error: upErr } = await sb.storage.from('photos').upload(path, file, { cacheControl:'3600', upsert:false });
-          if(upErr) return alert(upErr.message);
-          await sb.from('photos').insert({
-            project_id: currentProjectId, room_id: roomId, trade, phase,
-            path, uploaded_by: currentUser.email
-          }).catch(()=>{});
-          await renderAllPhotos(currentProjectId);
-          alert('Photo uploaded');
+     // uploads
+roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp=>{
+  inp.addEventListener('change', async ()=>{
+    const file = inp.files?.[0]; 
+    if (!file) return;
+
+    const [roomId, trade, phase] = inp.getAttribute('data-upload-for').split(':');
+    const path = `${currentProjectId}/${roomId}/${trade}/${Date.now()}_${file.name}`;
+
+    const { error: upErr } = await sb.storage.from('photos').upload(path, file, { cacheControl: '3600', upsert: false });
+    if (upErr) return alert(upErr.message);
+
+    const { error: insErr } = await sb.from('photos').insert({
+      project_id: currentProjectId,
+      room_id: roomId,
+      trade,
+      phase,
+      path,
+      uploaded_by: currentUser.email
+    });
+    if (insErr) return alert(insErr.message);
+
+    await renderAllPhotos(currentProjectId);
+    alert('Photo uploaded');
+  });
+});
         });
       });
     }
