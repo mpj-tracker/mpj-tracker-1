@@ -252,13 +252,11 @@
       useProjectBtn.disabled = false;
     });
 
-    <!-- ===== 6) Render floors/rooms/tasks ===== -->
-
-// BUILD DASH: floors → rooms → tasks
+   /* ===== 6) Render floors/rooms/tasks ===== */
 async function renderFloors(pid){
   roomsEl.innerHTML = '<div class="muted">Loading…</div>';
 
-  // 1) Load rooms for this project
+  // 1) rooms (order by floor)
   const { data: rooms, error: roomsErr } = await sb
     .from('rooms')
     .select('id,floor_name,room_name')
@@ -269,69 +267,56 @@ async function renderFloors(pid){
     roomsEl.innerHTML = '<div class="muted">Could not load rooms.</div>';
     return;
   }
-
-  // Cache rooms
   roomsCache = rooms.slice();
 
-  // 2) Load tasks for those rooms (used for progress bars and lists)
+  // 2) tasks for those rooms
   const roomIds = rooms.map(r => r.id);
-  const { data: tasks, error: tasksErr } = await sb
+  const { data: tasks } = await sb
     .from('tasks')
-    .select('id,room_id,trade,phase,description,done')
-    .in('room_id', roomIds.length ? roomIds : [-1]);
+    .select('id,room_id,trade,phase,description,done');
 
-  if (tasksErr) {
-    roomsEl.innerHTML = '<div class="muted">Could not load tasks.</div>';
-    return;
-  }
+  // Force booleans and keep only tasks that belong to current rooms
+  tasksCache = (tasks || [])
+    .filter(t => roomIds.some(id => String(id) === String(t.room_id)))
+    .map(t => ({ ...t, done: !!t.done }));
 
-  // normalise booleans
-  tasksCache = (tasks || []).map(t => ({ ...t, done: !!t.done }));
-
-  // 3) Group rooms by floor
+  // 3) group rooms by floor
   const floors = {};
   for (const r of rooms) {
-    const k = r.floor_name || 'Other';
-    (floors[k] ||= []).push(r);
+    const key = r.floor_name || 'Other';
+    (floors[key] ||= []).push(r);
   }
 
-  // Order floors with your preferred order
+  // 4) ordered floors
   const ordered = Object.keys(floors).sort((a,b)=>{
-    const ia = FLOOR_ORDER.indexOf(a);
-    const ib = FLOOR_ORDER.indexOf(b);
-    if (ia > -1 && ib > -1) return ia - ib;
-    if (ia > -1) return -1;
-    if (ib > -1) return 1;
+    const ia=FLOOR_ORDER.indexOf(a), ib=FLOOR_ORDER.indexOf(b);
+    if(ia>-1 && ib>-1) return ia-ib;
+    if(ia>-1) return -1; if(ib>-1) return 1;
     return a.localeCompare(b);
   });
 
-  // 4) Build HTML
+  // 5) build HTML
   const out = [];
-  for (const fname of ordered) {
+  for (const fname of ordered){
     const fRooms = floors[fname].sort(by('room_name'));
-
-    const floorTaskList = tasksCache.filter(
-      t => fRooms.some(r => r.id === t.room_id)
-    );
+    const floorTaskList = tasksCache.filter(t => fRooms.some(r => String(r.id) === String(t.room_id)));
     const floorTotal = floorTaskList.length || 1;
     const floorDone = floorTaskList.filter(t => t.done).length;
     const floorPct = Math.round(100 * floorDone / floorTotal);
 
-    out.push(
-      `<details class="card" data-floor="${safe(fname)}">
+    out.push(`
+      <details class="card" data-floor="${safe(fname)}">
         <summary class="row" style="gap:1rem;align-items:center">
           <strong>${safe(fname)}</strong>
           <span class="small muted">${floorDone}/${floorTotal}</span>
-          <div class="progress" style="flex:1;max-width:380px">
-            <span style="width:${floorPct}%"></span>
-          </div>
+          <div class="progress" style="flex:1;max-width:380px"><span style="width:${floorPct}%"></span></div>
           <span class="small muted">${floorPct}%</span>
         </summary>
         <div class="body">
-          ${fRooms.map((r) => roomBlock(r)).join('')}
+          ${fRooms.map(r => roomBlock(r)).join('')}
         </div>
-      </details>`
-    );
+      </details>
+    `);
   }
 
   roomsEl.innerHTML = out.join('');
@@ -339,24 +324,20 @@ async function renderFloors(pid){
   refreshProgressUI();
   await renderSignoffs(pid);
   await renderAllPhotos(pid);
-} // <-- closes async function renderFloors(pid)
+}
 
-// ------- helpers used above -------
-
+// helper used above
 function roomBlock(r){
   const rTasks = tasksCache.filter(t => String(t.room_id) === String(r.id));
   const total = rTasks.length || 1;
   const done = rTasks.filter(t => t.done).length;
   const pct = Math.round(100 * done / total);
-
   return `
     <details class="card" data-room="${r.id}">
       <summary class="row" style="gap:1rem;align-items:center">
         <strong>${safe(r.room_name)}</strong>
         <span class="small muted">${done}/${total}</span>
-        <div class="progress" style="flex:1;max-width:300px">
-          <span style="width:${pct}%"></span>
-        </div>
+        <div class="progress" style="flex:1;max-width:300px"><span style="width:${pct}%"></span></div>
         <span class="small muted">${pct}%</span>
       </summary>
       <div class="body" data-room-body="${r.id}">
@@ -365,6 +346,48 @@ function roomBlock(r){
     </details>
   `;
 }
+
+function refreshProgressUI(){
+  // per-room
+  roomsEl.querySelectorAll('details[data-room]').forEach(roomWrap=>{
+    const roomId = roomWrap.getAttribute('data-room');
+    const rTasks = tasksCache.filter(t => String(t.room_id) === String(roomId));
+    const total = rTasks.length || 1;
+    const done = rTasks.filter(t => t.done).length;
+    const pct = Math.round(100 * done / total);
+    const summary = roomWrap.querySelector('summary');
+    if(summary){
+      summary.querySelector('.progress > span').style.width = pct+'%';
+      const spans = summary.querySelectorAll('.small.muted');
+      if(spans[0]) spans[0].textContent = `${done}/${total}`;
+      if(spans[1]) spans[1].textContent = `${pct}%`;
+    }
+  });
+
+  // per-floor
+  roomsEl.querySelectorAll('details[data-floor]').forEach(fWrap=>{
+    const roomIds = Array.from(fWrap.querySelectorAll('details[data-room]')).map(x=>x.getAttribute('data-room'));
+    const fTasks = tasksCache.filter(t=> roomIds.includes(String(t.room_id)));
+    const total = fTasks.length || 1;
+    const done = fTasks.filter(t=>t.done).length;
+    const pct = Math.round(100*done/total);
+    const summary = fWrap.querySelector('summary');
+    if(summary){
+      summary.querySelector('.progress > span').style.width = pct+'%';
+      const spans = summary.querySelectorAll('.small.muted');
+      if(spans[0]) spans[0].textContent = `${done}/${total}`;
+      if(spans[1]) spans[1].textContent = `${pct}%`;
+    }
+  });
+
+  // overall
+  const allTotal = tasksCache.length || 1;
+  const allDone = tasksCache.filter(t=>t.done).length;
+  const pct = Math.round(100*allDone/allTotal);
+  overallBar.style.width = pct + '%';
+  overallPct.textContent = pct + '%';
+}
+
 
 function tradeBlocks(roomId){
   return TRADE_DEFS.map(td=>{
@@ -535,19 +558,30 @@ function tradeBlocks(roomId){
     }
 
     async function renderAllPhotos(pid){
-      const { data: ph, error } = await sb
-        .from('photos').select('path,uploaded_by,created_at')
-        .eq('project_id', pid).order('created_at',{ascending:false}).limit(300);
-      if(error){ allPhotosEl.innerHTML = '<div class="muted">Error loading photos</div>'; return; }
-      allPhotosEl.innerHTML = '';
-      for(const p of (ph||[])){
-        const { data: pub } = sb.storage.from('photos').getPublicUrl(p.path);
-        const img = new Image(); img.src = pub.publicUrl;
-        img.title = `${p.uploaded_by||''}\n${new Date(p.created_at).toLocaleString()}`;
-        img.addEventListener('click', ()=> window.open(pub.publicUrl, '_blank'));
-        allPhotosEl.appendChild(img);
-      }
-    }
+  const { data: ph, error } = await sb
+    .from('photos')
+    .select('path,uploaded_by,created_at')
+    .eq('project_id', pid)
+    .order('created_at', { ascending:false })
+    .limit(300);
+
+  if (error) {
+    allPhotosEl.innerHTML = '<div class="muted">Error loading photos</div>';
+    return;
+  }
+
+  allPhotosEl.innerHTML = ''; // clear
+  for (const p of (ph || [])) {
+    const { data: pub } = sb.storage.from('photos').getPublicUrl(p.path);
+    const img = new Image();
+    img.src = pub.publicUrl;
+    img.alt = p.path.split('/').pop();
+    img.title = `${p.uploaded_by || ''}\n${new Date(p.created_at).toLocaleString()}`;
+    img.addEventListener('click', () => window.open(pub.publicUrl, '_blank'));
+    allPhotosEl.appendChild(img);
+  }
+}
+
 
     /* ===== 9) Search ===== */
     searchInput.addEventListener('input', ()=>{
