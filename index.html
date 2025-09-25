@@ -183,7 +183,7 @@ loginBtn.addEventListener('click', async ()=>{
 });
 
 <!-- 4) Auth (drop-in replacement) -->
-<script>
+
   // helper views (keep these if you already have them)
   function showAuth(){ authBox.classList.remove('hidden'); projectBox.classList.add('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
   function showProject(){ authBox.classList.add('hidden'); projectBox.classList.remove('hidden'); dash.classList.add('hidden'); }
@@ -241,7 +241,7 @@ loginBtn.addEventListener('click', async ()=>{
     authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email}` : 'Signed out';
     if(currentUser) showProject(); else showAuth();
   })();
-</script>
+
 
 
     /* 5) Use/Create project (+ auto seed) */
