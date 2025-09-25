@@ -466,7 +466,7 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
     alert('Photo uploaded');
   });
 });
-
+}
     function refreshProgressUI(){
       // per-room
       roomsEl.querySelectorAll('details[data-room]').forEach(roomWrap=>{
@@ -600,13 +600,16 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
      btn.textContent = 'Signed';
         btn.disabled = true;
 
-       await renderDash(currentProjectId); // refresh signoffs
+       await renderSignoffs(currentProjectId); // refresh signoffs
       } catch (err) {
         alert(err.message || String(err));
       }
+
     }); // end global click handler
 
-})(); // end async IIFE
+  // ====== END: everything inside the async IIFE ======
+})(); 
+
 </script>
 </body>
 </html>
