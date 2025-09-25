@@ -252,19 +252,91 @@
       useProjectBtn.disabled = false;
     });
 
+    
     /* ===== 6) Render floors/rooms/tasks ===== */
-    async function renderFloors(pid){
-      roomsEl.innerHTML = '<div class="muted">Loading…</div>';
+async function renderFloors(pid){
+  roomsEl.innerHTML = '<div class="muted">Loading…</div>';
 
-      const { data: rooms, error: roomsErr } = await sb
-        .from('rooms').select('id,floor_name,room_name').eq('project_id', pid);
-      if(roomsErr){ roomsEl.innerHTML = '<div class="muted">Could not load rooms.</div>'; return; }
-      roomsCache = rooms.slice();
+  // 1) load rooms for this project
+  const { data: rooms, error: roomsErr } = await sb
+    .from('rooms')
+    .select('id,floor_name,room_name')
+    .eq('project_id', pid)
+    .order('floor_name,room_name');
 
-      const { data: tasks } = await sb
-        .from('tasks').select('id,room_id,trade,phase,description,done').in('room_id', rooms.map(r=>r.id));
-      tasksCache = tasks || [];
+  if (roomsErr) {
+    roomsEl.innerHTML = '<div class="muted">Could not load rooms.</div>';
+    return;
+  }
+  roomsCache = rooms || [];
 
+  // 2) load tasks for those rooms (if any) and normalise boolean
+  let tData = [];
+  if (roomsCache.length) {
+    const roomIds = roomsCache.map(r => r.id);
+    const { data: t, error: tErr } = await sb
+      .from('tasks')
+      .select('id,room_id,trade,phase,description,done')
+      .in('room_id', roomIds);
+
+    if (tErr) {
+      console.warn('[tasks load]', tErr);
+    } else {
+      tData = (t || []).map(x => ({ ...x, done: !!x.done }));
+    }
+  }
+  tasksCache = tData;
+
+  // 3) group rooms by floor
+  const floors = {};
+  for (const r of roomsCache) {
+    const k = r.floor_name || 'Other';
+    (floors[k] ||= []).push(r);
+  }
+
+  // 4) order floors nicely
+  const ordered = Object.keys(floors).sort((a,b)=>{
+    const ia = FLOOR_ORDER.indexOf(a), ib = FLOOR_ORDER.indexOf(b);
+    if (ia > -1 && ib > -1) return ia - ib;
+    if (ia > -1) return -1;
+    if (ib > -1) return 1;
+    return a.localeCompare(b);
+  });
+
+  // 5) build HTML
+  const out = [];
+  for (const fname of ordered) {
+    const fRooms = floors[fname].sort(by('room_name'));
+    const floorTaskList = tasksCache.filter(t => fRooms.some(r => r.id === t.room_id));
+    const floorTotal = floorTaskList.length || 1;
+    const floorDone = floorTaskList.filter(t => t.done).length;
+    const floorPct = Math.round(100 * floorDone / floorTotal);
+
+    out.push(`
+      <details class="card" data-floor="${safe(fname)}">
+        <summary class="row" style="gap:1rem;align-items:center">
+          <strong>${safe(fname)}</strong>
+          <span class="small muted">${floorDone}/${floorTotal}</span>
+          <div class="progress" style="flex:1;max-width:380px">
+            <span style="width:${floorPct}%"></span>
+          </div>
+          <span class="small muted">${floorPct}%</span>
+        </summary>
+        <div class="body">
+          ${fRooms.map(r => roomBlock(r)).join('')}
+        </div>
+      </details>
+    `);
+  }
+
+  roomsEl.innerHTML = out.join('');
+
+  // 6) wire up room UI and refresh bars/photos/signoffs
+  attachRoomHandlers();
+  refreshProgressUI();
+  await renderSignoffs(pid);
+  await renderAllPhotos(pid);
+}
       // group rooms by floor
       const floors = {};
       for(const r of rooms){
