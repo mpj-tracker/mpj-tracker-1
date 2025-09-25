@@ -597,16 +597,16 @@ roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp => {
         });
         if (error) throw error;
 
-        btn.textContent = 'Signed';
+     btn.textContent = 'Signed';
         btn.disabled = true;
 
-await renderDash(currentProjectId);
-  } catch (err) {
-    alert(err.message || String(err));
-  }
-}); // end global click handler
+        await renderDash(currentProjectId); // refresh signoffs
+      } catch (err) {
+        alert(err.message || String(err));
+      }
+    }); // end global click handler
 
-})(); // end async IIFE
+  })(); // end async IIFE
 </script>
 </body>
 </html>
