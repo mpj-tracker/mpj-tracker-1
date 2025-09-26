@@ -11,7 +11,7 @@
   <link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png"/>
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 
-  <!-- Supabase v2 (single include) -->
+  <!-- Supabase v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -33,7 +33,6 @@
     .grid{display:grid;grid-template-columns:1fr;gap:1rem}
     .btn{border:none;background:#e8eef0;padding:.55rem .85rem;border-radius:9px;cursor:pointer}
     .btn.accent{background:#fff;color:var(--brand);border:1px solid var(--brand);font-weight:600}
-    .btn.danger{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
     .btn.right{margin-left:auto}
     .input{width:100%;padding:.6rem .7rem;border-radius:9px;border:1px solid #e5e7eb;background:#fff}
     .muted{color:#6b7280} .small{font-size:.85rem}
@@ -56,9 +55,10 @@
     .trade-Decorators .chip.trade{background:var(--decorators);color:#fff}
     .trade-Tiling .chip.trade{background:var(--tiling);color:#000}
     .trade-Specialist .chip.trade{background:var(--special);color:#000}
-    /* Diagnostics dropdown */
+    /* diagnostics */
+    #diag-wrap{position:fixed;right:12px;bottom:12px;max-width:420px;z-index:50}
     #diag-wrap summary{cursor:pointer}
-    #diag{white-space:pre-wrap;font-family:ui-monospace, SFMono-Regular, Menlo, monospace;font-size:.8rem;background:#f8fafc;border:1px dashed #e2e8f0;border-radius:8px;padding:.5rem}
+    #diag{white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace;font-size:.85rem}
   </style>
 </head>
 <body>
@@ -72,16 +72,10 @@
   </header>
 
   <main>
-    <!-- Diagnostics -->
-    <details id="diag-wrap" class="card">
-      <summary><strong>Diagnostics</strong> <span class="small muted">(click to open/close)</span></summary>
-      <div id="diag" class="small muted">Ready.</div>
-    </details>
-
     <!-- Auth -->
     <div id="auth-box" class="card">
       <h2>Login / Sign Up</h2>
-      <p class="small muted">Use your email + password. (Email confirmations can be disabled in Supabase if you like.)</p>
+      <p class="small muted">Use your email + password. New users can sign up here.</p>
       <div class="row">
         <input id="email" class="input" placeholder="Enter your email" style="max-width:260px"/>
         <input id="password" class="input" placeholder="Enter your password" type="password" style="max-width:180px"/>
@@ -98,7 +92,6 @@
         <input id="project-name" class="input" placeholder="Project name" style="max-width:320px"/>
         <input id="project-address" class="input" placeholder="Site address (optional)" style="max-width:420px"/>
         <button id="use-project" class="btn accent">Use / Create Project</button>
-        <button id="clear-demo" class="btn danger">Clear demo data (this project)</button>
       </div>
       <p class="small muted">Tip: re-use the same name to open it again later.</p>
     </div>
@@ -106,7 +99,7 @@
     <!-- Dashboard -->
     <div id="dash" class="card hidden">
       <h2>Project Dashboard</h2>
-      <input id="search" class="input" placeholder="Filter by room…"/>
+      <input id="search" class="input" placeholder="Filter by room…" />
       <div class="row" style="gap:1rem;align-items:center;margin:.6rem 0">
         <strong>Overall Progress</strong>
         <div class="progress" style="flex:1;max-width:540px"><span id="overall-bar" style="width:0%"></span></div>
@@ -128,38 +121,37 @@
     <div id="rooms" class="grid"></div>
   </main>
 
+  <!-- Diagnostics (toggle) -->
+  <div id="diag-wrap">
+    <details class="card" open>
+      <summary><strong>Diagnostics</strong> (tap to hide)</summary>
+      <div id="diag" class="small muted">Ready.</div>
+    </details>
+  </div>
+
   <script defer>
   (async function () {
-    /* ===== 1) Supabase client ===== */
+    /* ---------- 0) Kill any stale service worker (prevents frozen login) ---------- */
+    if ('serviceWorker' in navigator) {
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+        if (window.caches?.keys) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        console.log('[sw] Unregistered and caches cleared');
+      } catch(e){ console.warn('[sw] purge failed', e); }
+    }
+
+    /* ---------- 1) Supabase client ---------- */
     const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
     });
 
-    /* ---- LOGIN FIX PATCH: SW purge + strong diagnostics + robust auth ---- */
-    // A) remove any old service workers that might cache stale JS
-    try{
-      if('serviceWorker' in navigator){
-        navigator.serviceWorker.getRegistrations().then(regs=>regs.forEach(r=>r.unregister()));
-      }
-    }catch(_){}
-
-    // B) show runtime errors in diagnostics
-    const diag = (m)=>{ const el=document.getElementById('diag'); if(el) el.textContent = String(m); };
-    window.addEventListener('error', e=> diag('[window.error] ' + (e?.error?.message||e.message||String(e))));
-    window.addEventListener('unhandledrejection', e=> diag('[promise] ' + (e?.reason?.message||String(e.reason))));
-
-    // C) auth helpers
-    async function refreshAuthUI(){
-      const { data } = await sb.auth.getSession();
-      session = data.session || null;
-      currentUser = session?.user || null;
-      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email || currentUser.id}` : 'Signed out';
-      if(currentUser){ showProject(); } else { showAuth(); }
-    }
-
-    /* ===== 2) DOM refs ===== */
+    /* ---------- 2) DOM refs ---------- */
     const authBox = document.getElementById('auth-box');
     const projectBox = document.getElementById('project-box');
     const dash = document.getElementById('dash');
@@ -175,7 +167,6 @@
     const projectNameInput = document.getElementById('project-name');
     const projectAddressInput = document.getElementById('project-address');
     const useProjectBtn = document.getElementById('use-project');
-    const clearDemoBtn = document.getElementById('clear-demo');
 
     const searchInput = document.getElementById('search');
     const allSignoffsEl = document.getElementById('all-signoffs');
@@ -183,11 +174,14 @@
     const overallBar = document.getElementById('overall-bar');
     const overallPct = document.getElementById('overall-pct');
 
-    /* ===== 3) Helpers/State ===== */
+    const diag = (m)=>{ const el=document.getElementById('diag'); if(el) el.textContent = String(m); console.log('[diag]', m); };
+
+    /* ---------- 3) Helpers/State ---------- */
     const FLOOR_ORDER = ['Basement','Ground Floor','1st Floor','2nd Floor','Other','Garage','Roof'];
     const safe = s => (s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
     const by = k => (a,b)=> (a[k]||'').localeCompare(b[k]||'');
 
+    // Trade normalisation (just in case)
     const TRADE_ALIASES = {
       'joiners':'Joinery','joiner':'Joinery','joinery':'Joinery',
       'electricians':'Electrical','electrician':'Electrical','electrical':'Electrical',
@@ -199,14 +193,15 @@
     };
     const canonTrade = t => { if(!t) return ''; const k = String(t).trim().toLowerCase(); return TRADE_ALIASES[k] || t; };
 
+    // One section per trade (you said this is what you want)
     const TRADE_DEFS = [
-      { name:'Joinery', phases:['First fix','Second fix','Extras'] },
-      { name:'Electrical', phases:['First fix','Second fix','Extras'] },
-      { name:'Plumbing', phases:['First fix','Second fix','Extras'] },
-      { name:'Plasterer', phases:['First fix','Second fix','Extras'] },
-      { name:'Decorators', phases:['First fix','Second fix','Extras'] },
-      { name:'Tiling', phases:['Walls','Floor','Extras'] },
-      { name:'Specialist', phases:['Extras'] },
+      { name:'Joinery', phases:['All'] },
+      { name:'Electrical', phases:['All'] },
+      { name:'Plumbing', phases:['All'] },
+      { name:'Plasterer', phases:['All'] },
+      { name:'Decorators', phases:['All'] },
+      { name:'Tiling', phases:['All'] },
+      { name:'Specialist', phases:['All'] },
     ];
 
     let session=null, currentUser=null, currentProjectId=null;
@@ -216,46 +211,64 @@
     function showProject(){ authBox.classList.add('hidden'); projectBox.classList.remove('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
     function showApp(){ authBox.classList.add('hidden'); projectBox.classList.add('hidden'); dash.classList.remove('hidden'); }
 
-    /* ===== 4) Auth (robust) ===== */
+    /* ---------- 4) Auth (robust) ---------- */
+    async function refreshAuthUI(){
+      const { data } = await sb.auth.getSession();
+      session = data.session || null;
+      currentUser = session?.user || null;
+      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email || currentUser.id}` : 'Signed out';
+      if(currentUser){ showProject(); } else { showAuth(); }
+    }
+
     signupBtn.addEventListener('click', async ()=>{
-      const email=(emailInput.value||'').trim().toLowerCase(), pw=passwordInput.value||'';
+      const email=(emailInput.value||'').trim().toLowerCase();
+      const pw=passwordInput.value||'';
       if(!email||!pw) return diag('Please enter email and password');
-      signupBtn.disabled = true;
+      signupBtn.disabled=true;
       try{
         const { error } = await sb.auth.signUp({ email, password: pw });
-        if(error) throw error;
-        diag('Sign up OK. If confirmations are enabled, check your inbox.');
+        if (error) throw error;
+        diag('Sign up OK (email confirmations are OFF in settings).');
       }catch(err){ diag('Sign up failed: '+(err?.message||String(err))); }
       finally{ signupBtn.disabled=false; }
     });
 
     loginBtn.addEventListener('click', async ()=>{
-      const email=(emailInput.value||'').trim().toLowerCase(), pw=passwordInput.value||'';
+      const email=(emailInput.value||'').trim().toLowerCase();
+      const pw=passwordInput.value||'';
       if(!email||!pw) return diag('Please enter email and password');
-      loginBtn.disabled = true;
+      loginBtn.disabled=true;
       try{
-        const { error } = await sb.auth.signInWithPassword({ email, password: pw });
-        if(error) throw error;
-        diag('Login OK');
+        const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+        if (error) throw error;
+        // Some browsers delay state; poll briefly to ensure session is present
+        let tries=0;
+        while(tries<8){
+          const { data: s } = await sb.auth.getSession();
+          if(s.session?.user) break;
+          await new Promise(r=>setTimeout(r,250));
+          tries++;
+        }
         await refreshAuthUI();
+        diag('Login OK');
       }catch(err){ diag('Login failed: '+(err?.message||String(err))); }
       finally{ loginBtn.disabled=false; }
     });
 
     logoutBtn.addEventListener('click', async ()=>{
-      try{ await sb.auth.signOut(); await refreshAuthUI(); }
+      try{ await sb.auth.signOut(); await refreshAuthUI(); diag('Signed out'); }
       catch(err){ diag('Sign out failed: '+(err?.message||String(err))); }
     });
 
     sb.auth.onAuthStateChange(async ()=>{ await refreshAuthUI(); });
-    await refreshAuthUI(); // initial
+    await refreshAuthUI(); // initial on load
 
-    /* ===== 5) Use/Create project (+ optional seeds) ===== */
+    /* ---------- 5) Use/Create project (with optional seeds) ---------- */
     useProjectBtn.addEventListener('click', async ()=>{
       const name=(projectNameInput.value||'').trim();
       const addr=(projectAddressInput.value||'').trim();
+      if(!currentUser) return diag('Please sign in first.');
       if(!name) return diag('Enter a project name');
-      if(!currentUser) return diag('Please sign in first');
       useProjectBtn.disabled = true;
       try{
         const { data: existing, error: findErr } = await sb
@@ -264,43 +277,25 @@
 
         if(existing?.length){
           currentProjectId = existing[0].id;
-        }else{
+        } else {
           const { data: ins, error: insErr } = await sb
             .from('projects').insert({ name, site_address: addr, user_id: currentUser.id })
             .select('id').single();
           if(insErr) throw insErr;
           currentProjectId = ins.id;
 
-          // If you created the seed RPCs, these will populate rooms/tasks. Ignore errors if not present.
+          // best-effort seeds (ignore if RPCs not installed)
           await sb.rpc('seed_full_project', { p_name: name, p_site: addr }).catch(()=>{});
           await sb.rpc('seed_trade_tasks_for_project', { p_project_id: currentProjectId }).catch(()=>{});
         }
 
         await renderFloors(currentProjectId);
         showApp();
-      }catch(err){ diag(err?.message||String(err)); }
+      }catch(err){ diag(err.message||String(err)); }
       finally{ useProjectBtn.disabled=false; }
     });
 
-    // Clear demo/test data for current project (photos, notes, signoffs, task states)
-    clearDemoBtn.addEventListener('click', async ()=>{
-      if(!currentProjectId) return diag('Open a project first');
-      if(!confirm('Delete photos, sign-offs, and reset task completion for THIS project?')) return;
-      try{
-        await sb.from('photos').delete().eq('project_id', currentProjectId);
-        await sb.from('signoffs').delete().eq('project_id', currentProjectId);
-        await sb.from('tasks').update({ done:false, notes:null }).in(
-          'room_id',
-          (await sb.from('rooms').select('id').eq('project_id', currentProjectId)).data?.map(r=>r.id)||[]
-        );
-        diag('Project data cleared.');
-        await renderFloors(currentProjectId);
-        await renderAllPhotos(currentProjectId);
-        await renderSignoffs(currentProjectId);
-      }catch(err){ diag(err?.message||String(err)); }
-    });
-
-    /* ===== 6) Render floors/rooms/tasks ===== */
+    /* ---------- 6) Render floors / rooms / tasks ---------- */
     async function renderFloors(pid){
       roomsEl.innerHTML = '<div class="muted">Loading…</div>';
 
@@ -309,16 +304,17 @@
       if(roomsErr){ roomsEl.innerHTML = '<div class="muted">Could not load rooms.</div>'; return; }
       roomsCache = rooms.slice();
 
+      // tasks (only for these rooms)
       const roomIds = rooms.map(r=>r.id);
       const { data: tasks } = await sb
-        .from('tasks').select('id,room_id,trade,phase,description,done,notes');
+        .from('tasks').select('id,room_id,trade,phase,description,done');
       tasksCache = (tasks||[])
-        .filter(t=> roomIds.includes(t.room_id))
-        .map(t=> ({...t, done: !!t.done, trade: canonTrade(t.trade)}));
+        .filter(t => roomIds.includes(t.room_id))
+        .map(t => ({ ...t, done: !!t.done, trade: canonTrade(t.trade)}));
 
       // group rooms by floor
       const floors = {};
-      for(const r of rooms){
+      for (const r of rooms){
         const key = r.floor_name || 'Other';
         (floors[key] ||= []).push(r);
       }
@@ -382,54 +378,49 @@
     }
 
     function tradeBlocks(roomId){
-      // One section per trade (your latest request)
-      const tradesInRoom = Array.from(new Set(
-        tasksCache.filter(t=>t.room_id===roomId).map(t=>t.trade)
-      ));
-      const order = TRADE_DEFS.map(x=>x.name);
-      const sorted = tradesInRoom.sort((a,b)=> order.indexOf(a)-order.indexOf(b));
+      // One section per trade; we render whatever tasks exist for that room/trade (any phase)
+      return TRADE_DEFS.map(td=>{
+        const tTasks = tasksCache.filter(t => t.room_id===roomId && t.trade===td.name);
+        const list = tTasks;
 
-      return sorted.map(trade=>{
-        const defs = TRADE_DEFS.find(x=>x.name===trade) || { name:trade, phases:[] };
-        const list = tasksCache.filter(t=> t.room_id===roomId && t.trade===trade);
         return `
-          <div class="task trade-${trade.replace(/\s+/g,'-')}">
+          <div class="task trade-${td.name}">
             <div class="row" style="justify-content:space-between">
-              <span class="chip trade ${'trade-'+trade.replace(/\s+/g,'-')}">${trade}</span>
-              <span class="small muted">${list.filter(x=>x.done).length}/${list.length}</span>
+              <span class="chip trade">${td.name}</span>
+              <span class="chip">${list.length} task${list.length===1?'':'s'}</span>
             </div>
             <div style="margin:.5rem 0">
               ${
                 list.length
-                ? list.map(t => `
-                    <label class="row" style="gap:.5rem;margin:.25rem 0">
-                      <input type="checkbox" data-task-id="${t.id}" ${t.done ? 'checked' : ''}/>
-                      <span>${safe(t.description || `${t.trade} ${t.phase || ''}`)}</span>
-                    </label>
-                  `).join('')
-                : '<div class="muted small">No tasks yet</div>'
+                  ? list.map(t => `
+                      <label class="row" style="gap:.5rem;margin:.25rem 0">
+                        <input type="checkbox" data-task-id="${t.id}" ${t.done ? 'checked' : ''}/>
+                        <span>${safe(t.description || `${t.trade}${t.phase?(' – '+t.phase):''}`)}</span>
+                      </label>
+                    `).join('')
+                  : '<div class="muted small">No tasks yet</div>'
               }
             </div>
             <div style="margin-top:.5rem">
               <label class="small muted">Notes</label>
-              <textarea class="note" data-note-for="${roomId}:${trade}:_all" placeholder="Add notes…"></textarea>
+              <textarea class="note" data-note-for="${roomId}:${td.name}:All" placeholder="Add notes…"></textarea>
             </div>
             <div class="row" style="margin-top:.5rem">
-              <input type="file" accept="image/*" capture="environment" data-upload-for="${roomId}:${trade}:_all"/>
+              <input type="file" accept="image/*" capture="environment" data-upload-for="${roomId}:${td.name}:All"/>
               <button class="btn signoff-btn"
                       data-room-id="${roomId}"
                       data-task-id=""
-                      data-trade="${trade}"
-                      data-phase="_all">Sign off</button>
+                      data-trade="${td.name}"
+                      data-phase="All">Sign off</button>
             </div>
           </div>
         `;
       }).join('');
     }
 
-    /* ===== 7) Handlers ===== */
+    /* ---------- 7) Handlers ---------- */
     function attachRoomHandlers(){
-      // toggle done
+      // Done toggle
       roomsEl.querySelectorAll('input[type="checkbox"][data-task-id]').forEach(cb=>{
         cb.addEventListener('change', async (e)=>{
           const id = e.target.getAttribute('data-task-id');
@@ -442,14 +433,14 @@
         });
       });
 
-      // notes (debounced)
+      // Notes (debounced save)
       const timers = new Map();
       roomsEl.querySelectorAll('textarea[data-note-for]').forEach(ta=>{
         ta.addEventListener('input', ()=>{
-          const key = ta.getAttribute('data-note-for'); // roomId:trade:_all
+          const key = ta.getAttribute('data-note-for');
           clearTimeout(timers.get(key));
           timers.set(key, setTimeout(async ()=>{
-            const [roomId, trade] = key.split(':');
+            const [roomId, trade, phase] = key.split(':');
             const { error } = await sb.from('tasks')
               .update({ notes: ta.value, updated_at: new Date().toISOString() })
               .eq('room_id', roomId).eq('trade', trade);
@@ -458,15 +449,18 @@
         });
       });
 
-      // uploads
+      // Uploads → storage + photos table
       roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp=>{
         inp.addEventListener('change', async ()=>{
           const file = inp.files?.[0]; if(!file) return;
-          const [roomId, trade] = (inp.getAttribute('data-upload-for')||'').split(':');
+          const [roomId, trade, phase] = (inp.getAttribute('data-upload-for')||'').split(':');
           const path = `${currentProjectId}/${roomId}/${trade}/${Date.now()}_${file.name}`;
           const { error: upErr } = await sb.storage.from('photos').upload(path, file, { cacheControl: '3600', upsert:false });
           if(upErr) return diag(upErr.message);
-          await sb.from('photos').insert({ project_id: currentProjectId, room_id: roomId, trade, phase: '_all', path, uploaded_by: currentUser.email }).catch(()=>{});
+          // store metadata (optional but recommended)
+          await sb.from('photos').insert({
+            project_id: currentProjectId, room_id: roomId, trade, phase, path, uploaded_by: currentUser?.email || currentUser?.id || 'user'
+          }).catch(()=>{});
           await renderAllPhotos(currentProjectId);
           diag('Photo uploaded');
         });
@@ -514,7 +508,7 @@
       overallPct.textContent = pct + '%';
     }
 
-    /* ===== 8) Dashboard lists ===== */
+    /* ---------- 8) Dashboard lists ---------- */
     async function renderSignoffs(pid){
       const { data: s, error } = await sb
         .from('signoffs')
@@ -524,7 +518,7 @@
       allSignoffsEl.innerHTML = (s||[]).map(x=>`
         <div class="row" style="gap:.6rem;padding:.25rem 0;border-bottom:1px dashed #eef2f4">
           <span class="chip">${safe(x.rooms?.room_name || 'Room')}</span>
-          <span class="chip">${safe(canonTrade(x.trade))}</span>
+          <span class="chip trade">${safe(canonTrade(x.trade))}</span>
           <span class="chip">${safe(x.phase || '')}</span>
           <span class="small muted">by ${safe(x.signed_by_name || '')}</span>
           <span class="small muted">${new Date(x.created_at).toLocaleString()}</span>
@@ -535,9 +529,7 @@
     async function renderAllPhotos(pid){
       const { data: ph, error } = await sb
         .from('photos').select('path,uploaded_by,created_at')
-        .eq('project_id', pid)
-        .order('created_at', { ascending:false })
-        .limit(300);
+        .eq('project_id', pid).order('created_at',{ascending:false}).limit(300);
       if(error){ allPhotosEl.innerHTML = '<div class="muted">Error loading photos</div>'; return; }
       allPhotosEl.innerHTML = '';
       for(const p of (ph||[])){
@@ -551,7 +543,7 @@
       }
     }
 
-    /* ===== 9) Search ===== */
+    /* ---------- 9) Search ---------- */
     searchInput.addEventListener('input', ()=>{
       const q = (searchInput.value||'').toLowerCase();
       if(!q){ document.querySelectorAll('details[data-floor]').forEach(d=> d.open=false); }
@@ -568,7 +560,7 @@
       });
     });
 
-    /* ===== 10) Global Sign-off button ===== */
+    /* ---------- 10) Global Sign-off ---------- */
     document.addEventListener('click', async (e)=>{
       const btn = e.target.closest('.signoff-btn'); if(!btn) return;
       if (!currentProjectId || !session?.user) return diag('Please sign in and choose a project first.');
