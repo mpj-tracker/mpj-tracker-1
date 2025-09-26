@@ -62,6 +62,22 @@
   </style>
 </head>
 <body>
+  <script>
+(async () => {
+  // 🚩 One-time nuke: unregister *any* rogue service workers + clear caches
+  if ('serviceWorker' in navigator) {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (let r of regs) await r.unregister();
+      const keys = await caches.keys();
+      for (let k of keys) await caches.delete(k);
+      console.log('[fix] SW + caches cleared ✅');
+    } catch(e) {
+      console.warn('[fix] cleanup failed', e);
+    }
+  }
+})();
+</script>
   <header>
     <div class="bar">
       <div class="brand">
