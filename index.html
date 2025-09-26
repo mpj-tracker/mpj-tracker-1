@@ -183,49 +183,91 @@
     function showProject(){ authBox.classList.add('hidden'); projectBox.classList.remove('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
     function showApp(){ authBox.classList.add('hidden'); projectBox.classList.add('hidden'); dash.classList.remove('hidden'); }
 
-    /* ===== 4) Auth (password) ===== */
-    signupBtn.addEventListener('click', async ()=>{
-      const email=(emailInput.value||'').trim(), pw=passwordInput.value||'';
-      if(!email||!pw) return alert('Please enter email and password');
-      const { error } = await sb.auth.signUp({ email, password: pw });
-      if(error) return alert(error.message);
-      alert('Sign up OK! If confirmation is required, check your email.');
-    });
+ /* ===== 4) Auth (password) ===== */
 
-    loginBtn.addEventListener('click', async ()=>{
-      const email=(emailInput.value||'').trim(), pw=passwordInput.value||'';
-      if(!email||!pw) return alert('Please enter email and password');
-      const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
-      if(error) return alert(error.message);
-      session = data.session; currentUser = session?.user || null;
-      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email}` : 'Signed out';
-      if(currentUser) showProject(); else showAuth();
-    });
+signupBtn.addEventListener('click', async () => {
+  const email = (emailInput.value || '').trim();
+  const pw = passwordInput.value || '';
+  if (!email || !pw) {
+    alert('Please enter email and password');
+    return;
+  }
+  signupBtn.disabled = true;
+  try {
+    console.log('[auth] signUp start', { email });
+    const { data, error } = await sb.auth.signUp({ email, password: pw });
+    if (error) throw error;
+    console.log('[auth] signUp ok', data);
+    alert('Sign up OK! If your project requires email confirmation, check your inbox.');
+  } catch (err) {
+    console.error('[auth] signUp error', err);
+    alert(`Sign up failed:\n${err?.message || JSON.stringify(err)}`);
+  } finally {
+    signupBtn.disabled = false;
+  }
+});
 
-    logoutBtn.addEventListener('click', async ()=>{
-      await sb.auth.signOut();
-      session=null; currentUser=null; authStateEl.textContent='Signed out'; showAuth();
-    });
+loginBtn.addEventListener('click', async () => {
+  const email = (emailInput.value || '').trim();
+  const pw = passwordInput.value || '';
+  if (!email || !pw) {
+    alert('Please enter email and password');
+    return;
+  }
+  loginBtn.disabled = true;
+  try {
+    console.log('[auth] signIn start', { email });
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+    if (error) throw error;
+    console.log('[auth] signIn ok', data);
+    // UI will update via onAuthStateChange below
+  } catch (err) {
+    console.error('[auth] signIn error', err);
+    alert(`Log in failed:\n${err?.message || JSON.stringify(err)}`);
+  } finally {
+    loginBtn.disabled = false;
+  }
+});
 
-    sb.auth.onAuthStateChange(async ()=>{
-      const { data } = await sb.auth.getSession();
-      session = data.session; currentUser = session?.user || null;
-      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email}` : 'Signed out';
-      if(currentUser) showProject(); else showAuth();
-    });
+logoutBtn.addEventListener('click', async () => {
+  try {
+    console.log('[auth] signOut start');
+    await sb.auth.signOut();
+    console.log('[auth] signOut ok');
+  } catch (err) {
+    console.error('[auth] signOut error', err);
+    alert(`Sign out failed:\n${err?.message || JSON.stringify(err)}`);
+  }
+});
 
-    // initial
-    {
-      const { data } = await sb.auth.getSession();
-      session = data.session; currentUser = session?.user || null;
-      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email}` : 'Signed out';
-      if(currentUser) showProject(); else showAuth();
-    }
+/* Keep UI in sync with auth */
+sb.auth.onAuthStateChange(async (_evt) => {
+  try {
+    const { data } = await sb.auth.getSession();
+    const session = data.session;
+    const user = session?.user || null;
+    authStateEl.textContent = user ? `Signed in: ${user.email || user.id}` : 'Signed out';
+    if (user) showProject(); else showAuth();
+    console.log('[auth] onAuthStateChange ->', { user: !!user });
+  } catch (err) {
+    console.error('[auth] onAuthStateChange error', err);
+  }
+});
 
-   /* ===== 5) Use/Create project (v2-safe) ===== */
-useProjectBtn.addEventListener('click', async () => {
-  const name = (projectNameInput.value || '').trim();
-  const addr = (projectAddressInput.value || '').trim();
+/* Initial check on load */
+(async () => {
+  try {
+    const { data } = await sb.auth.getSession();
+    const session = data.session;
+    const user = session?.user || null;
+    authStateEl.textContent = user ? `Signed in: ${user.email || user.id}` : 'Signed out';
+    if (user) showProject(); else showAuth();
+    console.log('[auth] initial session ->', { user: !!user });
+  } catch (err) {
+    console.error('[auth] initial session error', err);
+  }
+})();
+
 
   if (!currentUser) {
     alert('Please sign in first.');
