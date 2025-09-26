@@ -222,35 +222,75 @@
       if(currentUser) showProject(); else showAuth();
     }
 
-    /* ===== 5) Use/Create Project ===== */
-    useProjectBtn.addEventListener('click', async ()=>{
-      const name=(projectNameInput.value||'').trim();
-      const addr=(projectAddressInput.value||'').trim();
-      if(!name) return alert('Enter a project name');
-      useProjectBtn.disabled = true;
+   /* ===== 5) Use/Create project (v2-safe) ===== */
+useProjectBtn.addEventListener('click', async () => {
+  const name = (projectNameInput.value || '').trim();
+  const addr = (projectAddressInput.value || '').trim();
 
-      const { data: existing, error: findErr } = await sb
-        .from('projects').select('id').eq('user_id', currentUser.id).eq('name', name).limit(1);
-      if(findErr){ useProjectBtn.disabled=false; return alert(findErr.message); }
+  if (!currentUser) {
+    alert('Please sign in first.');
+    return;
+  }
+  if (!name) {
+    alert('Enter a project name');
+    return;
+  }
 
-      if(existing?.length){
-        currentProjectId = existing[0].id;
-      } else {
-        const { data: ins, error: insErr } = await sb
-          .from('projects').insert({ name, site_address: addr, user_id: currentUser.id })
-          .select('id').single();
-        if(insErr){ useProjectBtn.disabled=false; return alert(insErr.message); }
-        currentProjectId = ins.id;
+  useProjectBtn.disabled = true;
 
-        // If you created RPCs, they’ll run; otherwise they quietly skip
-        await sb.rpc('seed_full_project', { p_name: name, p_site: addr }).catch(()=>{});
-        await sb.rpc('seed_trade_tasks_for_project', { p_project_id: currentProjectId }).catch(()=>{});
-      }
+  try {
+    // 1) Try to find an existing project by this user + name
+    const { data: existing, error: findErr } = await sb
+      .from('projects')
+      .select('id')
+      .eq('user_id', currentUser.id)
+      .eq('name', name)
+      .limit(1);
 
-      await renderFloors(currentProjectId);
-      showApp();
-      useProjectBtn.disabled = false;
-    });
+    if (findErr) throw findErr;
+
+    if (existing && existing.length) {
+      // Reuse existing
+      currentProjectId = existing[0].id;
+    } else {
+      // 2) Create a new project
+      const { data: ins, error: insErr } = await sb
+        .from('projects')
+        .insert({
+          name,
+          site_address: addr,
+          user_id: currentUser.id,
+        })
+        .select('id')
+        .single();
+
+      if (insErr) throw insErr;
+
+      currentProjectId = ins.id;
+
+      // 3) Optional: run seed RPCs (ignore if you haven't created them)
+      const { error: seed1Err } = await sb.rpc('seed_full_project', {
+        p_name: name,
+        p_site: addr,
+      });
+      if (seed1Err) console.warn('[seed_full_project]', seed1Err);
+
+      const { error: seed2Err } = await sb.rpc('seed_trade_tasks_for_project', {
+        p_project_id: currentProjectId,
+      });
+      if (seed2Err) console.warn('[seed_trade_tasks_for_project]', seed2Err);
+    }
+
+    // 4) Render UI
+    await renderFloors(currentProjectId);
+    showApp();
+  } catch (err) {
+    console.error(err);
+    alert(err.message || String(err));
+  } finally {
+    useProjectBtn.disabled = false;
+  }
+});
 
    /* ===== 6) Render floors/rooms/tasks ===== */
 async function renderFloors(pid){
