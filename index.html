@@ -47,7 +47,7 @@
     .task{border:1px dashed #e5e7eb;border-radius:12px;padding:.75rem;margin:.6rem 0}
     .note{width:100%;min-height:70px;border-radius:10px;border:1px solid #e5e7eb;padding:.6rem}
     .hidden{display:none}
-    /* trade chips colors */
+    /* trade chips */
     .trade-Joinery .chip.trade{background:var(--joinery);color:#fff}
     .trade-Plumbing .chip.trade{background:var(--plumbing);color:#fff}
     .trade-Electrical .chip.trade{background:var(--electrical);color:#fff}
@@ -154,9 +154,6 @@
     const safe = s => (s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
     const by = k => (a,b)=> (a[k]||'').localeCompare(b[k]||'');
 
-    // show these tasks for every trade by default
-    const DEFAULT_TASKS = ['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'];
-
     const TRADE_ALIASES = {
       'joiners':'Joinery','joiner':'Joinery','joinery':'Joinery',
       'electricians':'Electrical','electrician':'Electrical','electrical':'Electrical',
@@ -169,13 +166,16 @@
     const canonTrade = t => { if(!t) return ''; const k = String(t).trim().toLowerCase(); return TRADE_ALIASES[k] || t; };
 
     const TRADE_DEFS = [
-      { name:'Joinery', phases:['General'] },
-      { name:'Electrical', phases:['General'] },
-      { name:'Plumbing', phases:['General'] },
-      { name:'Plasterer', phases:['General'] },
-      { name:'Decorators', phases:['General'] },
-      { name:'Tiling', phases:['General'] },
-      { name:'Specialist', phases:['General'] },
+      { name:'Joinery', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+      { name:'Plumbing', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+      { name:'Electrical', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+      { name:'Plasterer', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+      { name:'Decorators', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+      { name:'Tiling', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+      { name:'Specialist', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+    ];
+    const DEFAULT_TASKS = [
+      'Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'
     ];
 
     let session=null, currentUser=null, currentProjectId=null;
@@ -185,18 +185,19 @@
     function showProject(){ authBox.classList.add('hidden'); projectBox.classList.remove('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
     function showApp(){ authBox.classList.add('hidden'); projectBox.classList.add('hidden'); dash.classList.remove('hidden'); }
 
-    /* ===== 4) Auth ===== */
+    /* ===== 4) Auth (password) ===== */
     signupBtn.addEventListener('click', async () => {
       const email = (emailInput.value || '').trim();
       const pw = passwordInput.value || '';
       if (!email || !pw) return alert('Please enter email and password');
       signupBtn.disabled = true;
-      try{
+      try {
         const { error } = await sb.auth.signUp({ email, password: pw });
         if (error) throw error;
-        alert('Sign up OK! If confirmation is required, check your inbox.');
-      }catch(err){ alert(err.message||String(err)); }
-      finally{ signupBtn.disabled=false; }
+        alert('Sign up OK! If your project requires email confirmation, check your inbox.');
+      } catch (err) {
+        alert(`Sign up failed:\n${err?.message || String(err)}`);
+      } finally { signupBtn.disabled = false; }
     });
 
     loginBtn.addEventListener('click', async () => {
@@ -204,120 +205,104 @@
       const pw = passwordInput.value || '';
       if (!email || !pw) return alert('Please enter email and password');
       loginBtn.disabled = true;
-      try{
+      try {
         const { error } = await sb.auth.signInWithPassword({ email, password: pw });
         if (error) throw error;
-      }catch(err){ alert(err.message||String(err)); }
-      finally{ loginBtn.disabled=false; }
+      } catch (err) {
+        alert(`Log in failed:\n${err?.message || String(err)}`);
+      } finally { loginBtn.disabled = false; }
     });
 
     logoutBtn.addEventListener('click', async () => {
-      try{ await sb.auth.signOut(); }catch(err){ alert(err.message||String(err)); }
+      try { await sb.auth.signOut(); } catch (err) { alert(`Sign out failed:\n${err?.message || String(err)}`); }
     });
 
     sb.auth.onAuthStateChange(async ()=>{
-      const s = await sb.auth.getSession();
-      session = s.data.session || null;
+      const { data } = await sb.auth.getSession();
+      session = data.session || null;
       currentUser = session?.user || null;
-      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email||currentUser.id}` : 'Signed out';
-      currentUser ? showProject() : showAuth();
+      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email || currentUser.id}` : 'Signed out';
+      if (currentUser) showProject(); else showAuth();
     });
 
-    {
-      const s = await sb.auth.getSession();
-      session = s.data.session || null;
-      currentUser = session?.user || null;
-      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email||currentUser.id}` : 'Signed out';
-      currentUser ? showProject() : showAuth();
+    // initial
+    { const { data } = await sb.auth.getSession();
+      session = data.session || null; currentUser = session?.user || null;
+      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email || currentUser.id}` : 'Signed out';
+      if (currentUser) showProject(); else showAuth();
     }
 
     /* ===== 5) Use/Create Project ===== */
-    useProjectBtn.addEventListener('click', async () => {
-      if (!currentUser) return alert('Please sign in first.');
+    useProjectBtn.addEventListener('click', async ()=>{
+      if(!currentUser) return alert('Please sign in first.');
       const name = (projectNameInput.value||'').trim();
       const addr = (projectAddressInput.value||'').trim();
-      if (!name) return alert('Enter a project name');
-
+      if(!name) return alert('Enter a project name');
       useProjectBtn.disabled = true;
+
       try{
         const { data: existing, error: findErr } = await sb
-          .from('projects').select('id')
-          .eq('user_id', currentUser.id).eq('name', name).limit(1);
-        if (findErr) throw findErr;
+          .from('projects').select('id').eq('user_id',currentUser.id).eq('name',name).limit(1);
+        if(findErr) throw findErr;
 
-        if (existing?.length){
+        if(existing && existing.length){
           currentProjectId = existing[0].id;
-        } else {
+        }else{
           const { data: ins, error: insErr } = await sb
-            .from('projects')
-            .insert({ name, site_address: addr, user_id: currentUser.id })
+            .from('projects').insert({ name, site_address: addr, user_id: currentUser.id })
             .select('id').single();
-          if (insErr) throw insErr;
+          if(insErr) throw insErr;
           currentProjectId = ins.id;
 
-          // Optional seeds
-          await sb.rpc('seed_full_project', { p_name:name, p_site:addr }).catch(()=>{});
+          // optional seeds (ignore errors quietly)
+          await sb.rpc('seed_full_project', { p_name: name, p_site: addr }).catch(()=>{});
           await sb.rpc('seed_trade_tasks_for_project', { p_project_id: currentProjectId }).catch(()=>{});
         }
 
         await renderFloors(currentProjectId);
         showApp();
-      }catch(err){ alert(err.message||String(err)); }
-      finally{ useProjectBtn.disabled=false; }
-    });
-
-    /* ===== Helpers for progress with virtual totals ===== */
-    function roomStats(roomId){
-      let total = 0, done = 0;
-      for (const td of TRADE_DEFS){
-        const real = tasksCache.filter(t => String(t.room_id)===String(roomId) && canonTrade(t.trade)===td.name);
-        const count = real.length;
-        total += Math.max(count, DEFAULT_TASKS.length);
-        done += real.filter(t=>t.done).length;
+      }catch(err){
+        alert(err.message || String(err));
+      }finally{
+        useProjectBtn.disabled = false;
       }
-      return { total, done };
-    }
+    });
 
     /* ===== 6) Render floors/rooms/tasks ===== */
     async function renderFloors(pid){
       roomsEl.innerHTML = '<div class="muted">Loading…</div>';
 
+      // rooms
       const { data: rooms, error: roomsErr } = await sb
-        .from('rooms')
-        .select('id,floor_name,room_name')
-        .eq('project_id', pid)
-        .order('floor_name');
-      if (roomsErr){ roomsEl.innerHTML = '<div class="muted">Could not load rooms.</div>'; return; }
+        .from('rooms').select('id,floor_name,room_name').eq('project_id', pid).order('floor_name');
+      if(roomsErr){ roomsEl.innerHTML = '<div class="muted">Could not load rooms.</div>'; return; }
       roomsCache = rooms.slice();
 
-      const roomIds = rooms.map(r => r.id);
-      const { data: tasks } = await sb
-        .from('tasks')
-        .select('id,room_id,trade,phase,description,done');
-      tasksCache = (tasks||[])
-        .filter(t => roomIds.some(id => String(id) === String(t.room_id)))
-        .map(t => ({ ...t, done: !!t.done }));
+      // tasks
+      const { data: tasks } = await sb.from('tasks')
+        .select('id,room_id,trade,phase,description,done,notes,updated_at');
+      tasksCache = (tasks||[]).filter(t => rooms.some(r=>String(r.id)===String(t.room_id)))
+                               .map(t => ({...t, done: !!t.done}));
 
+      // group rooms by floor
       const floors = {};
-      for (const r of rooms){ (floors[r.floor_name||'Other'] ||= []).push(r); }
+      for(const r of rooms){ const k=r.floor_name||'Other'; (floors[k] ||= []).push(r); }
 
+      // order floors
       const ordered = Object.keys(floors).sort((a,b)=>{
         const ia=FLOOR_ORDER.indexOf(a), ib=FLOOR_ORDER.indexOf(b);
-        if(ia>-1 && ib>-1) return ia-ib;
-        if(ia>-1) return -1; if(ib>-1) return 1;
+        if(ia>-1 && ib>-1) return ia-ib; if(ia>-1) return -1; if(ib>-1) return 1;
         return a.localeCompare(b);
       });
 
+      // build
       const out = [];
-      for (const fname of ordered){
+      for(const fname of ordered){
         const fRooms = floors[fname].sort(by('room_name'));
-        // floor stats from per-room virtual totals
-        let floorTotal = 0, floorDone = 0;
-        for (const r of fRooms){
-          const s = roomStats(r.id);
-          floorTotal += s.total; floorDone += s.done;
-        }
-        const floorPct = Math.round(100 * floorDone / (floorTotal||1));
+        const floorTasks = tasksCache.filter(t => fRooms.some(r=>String(r.id)===String(t.room_id)));
+        const floorTotal = floorTasks.length || 1;
+        const floorDone = floorTasks.filter(t=>t.done).length;
+        const floorPct = Math.round(100*floorDone/floorTotal);
 
         out.push(`
           <details class="card" data-floor="${safe(fname)}">
@@ -342,20 +327,18 @@
     }
 
     function roomBlock(r){
-      const s = roomStats(r.id);
-      const pct = Math.round(100 * s.done / (s.total||1));
-
+      const rTasks = tasksCache.filter(t => String(t.room_id)===String(r.id));
+      const total = rTasks.length || 1;
+      const done = rTasks.filter(t=>t.done).length;
+      const pct = Math.round(100*done/total);
       return `
         <details class="card" data-room="${r.id}">
           <summary class="row" style="gap:1rem;align-items:center">
             <strong>${safe(r.room_name)}</strong>
-            <span class="small muted">${s.done}/${s.total}</span>
+            <span class="small muted">${done}/${total}</span>
             <div class="progress" style="flex:1;max-width:300px"><span style="width:${pct}%"></span></div>
             <span class="small muted">${pct}%</span>
           </summary>
-
-          <div class="thumbs" data-room-thumbs="${r.id}" style="margin:.25rem 0 .5rem 0"></div>
-
           <div class="body" data-room-body="${r.id}">
             ${tradeBlocks(r.id)}
           </div>
@@ -363,26 +346,24 @@
       `;
     }
 
-    // Always show all trades. When a phase has no rows, render DEFAULT_TASKS as placeholders.
     function tradeBlocks(roomId){
       return TRADE_DEFS.map(td=>{
-        const tAll = tasksCache.filter(t => String(t.room_id)===String(roomId) && canonTrade(t.trade)===td.name);
+        const tTasks = tasksCache.filter(t => String(t.room_id)===String(roomId) && canonTrade(t.trade)===td.name);
 
-        // group real tasks by phase
+        // group by phase
         const byPhase = {};
-        for (const t of tAll){
-          const key = t.phase || 'General';
-          (byPhase[key] ||= []).push(t);
-        }
+        for(const t of tTasks){ const key=t.phase||'General'; (byPhase[key] ||= []).push(t); }
 
-        const order = td.phases?.length ? td.phases : ['General'];
-
-        const sections = order.map(ph=>{
-          const real = byPhase[ph] || [];
-          // if none, create placeholders
-          const list = real.length
-            ? real
-            : DEFAULT_TASKS.map(desc => ({ id:null, description:desc, done:false, _virtual:true }));
+        const sections = td.phases.map(ph=>{
+          const list = byPhase[ph] || [];
+          // Build the list: existing tasks + default shells for missing
+          const haveDescs = new Set(list.map(t => (t.description||'').toLowerCase()));
+          const merged = list.slice();
+          DEFAULT_TASKS.forEach(d=>{
+            if(!haveDescs.has(d.toLowerCase())){
+              merged.push({ id:null, room_id:roomId, trade:td.name, phase:ph, description:d, done:false, __new:true });
+            }
+          });
 
           return `
             <div class="task trade-${td.name}">
@@ -391,15 +372,23 @@
                 <span class="chip">${safe(ph)}</span>
               </div>
               <div style="margin:.5rem 0">
-                ${list.map(t => `
-                  <label class="row" style="gap:.5rem;margin:.25rem 0">
-                    <input
-                      type="checkbox"
-                      ${t.id ? `data-task-id="${t.id}"` : `data-new="1" data-room-id="${roomId}" data-trade="${td.name}" data-phase="${safe(ph)}" data-desc="${safe(t.description)}"`}
-                      ${t.done ? 'checked' : ''}/>
-                    <span>${safe(t.description)}</span>
-                  </label>
-                `).join('')}
+                ${
+                  merged.length
+                  ? merged.map(t => `
+                      <label class="row" style="gap:.5rem;margin:.25rem 0">
+                        <input type="checkbox"
+                               data-task-id="${t.id||''}"
+                               data-new="${t.__new ? '1' : '0'}"
+                               data-room-id="${roomId}"
+                               data-trade="${td.name}"
+                               data-phase="${safe(ph)}"
+                               data-desc="${safe(t.description||'')}"
+                               ${t.done?'checked':''}/>
+                        <span>${safe(t.description||`${t.trade} ${t.phase||''}`)}</span>
+                      </label>
+                    `).join('')
+                  : '<div class="muted small">No tasks yet</div>'
+                }
               </div>
               <div style="margin-top:.5rem">
                 <label class="small muted">Notes</label>
@@ -421,101 +410,20 @@
       }).join('');
     }
 
-    /* ===== 7) Handlers ===== */
-    function attachRoomHandlers(){
-      // toggle or create-on-first-check
-      roomsEl.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
-        if (cb.dataset.handled) return;
-        cb.dataset.handled = '1';
-
-        cb.addEventListener('change', async (e)=>{
-          const el = e.target;
-          const hasId = !!el.dataset.taskId;
-          const checked = el.checked;
-
-          try {
-            if (hasId){
-              const id = el.dataset.taskId;
-              const { error } = await sb.from('tasks').update({ done: checked, updated_at: new Date().toISOString() }).eq('id', id);
-              if (error) throw error;
-              const t = tasksCache.find(x=>String(x.id)===String(id));
-              if (t) t.done = checked;
-            } else if (el.dataset.new === '1' && checked) {
-              // create the task on first tick
-              if (!currentProjectId || !currentUser) return alert('Please sign in and choose a project first.');
-              const room_id = el.dataset.roomId;
-              const trade = el.dataset.trade;
-              const phase = el.dataset.phase || 'General';
-              const description = el.dataset.desc || '';
-              const { data: ins, error: insErr } = await sb
-                .from('tasks')
-                .insert({ project_id: currentProjectId, room_id, trade, phase, description, done:true })
-                .select('id,room_id,trade,phase,description,done')
-                .single();
-              if (insErr) throw insErr;
-              tasksCache.push({ ...ins, done:true });
-              // convert this checkbox into a real one
-              el.dataset.taskId = ins.id;
-              delete el.dataset.new;
-            } else {
-              // unchecked a virtual box -> nothing to persist
-              el.checked = false;
-            }
-          } catch(err){
-            alert(err.message||String(err));
-            el.checked = !checked; // revert on error
-          }
-
-          refreshProgressUI();
-        });
-      });
-
-      // notes (debounced)
-      const timers = new Map();
-      roomsEl.querySelectorAll('textarea[data-note-for]').forEach(ta=>{
-        ta.addEventListener('input', ()=>{
-          const key = ta.getAttribute('data-note-for');
-          clearTimeout(timers.get(key));
-          timers.set(key, setTimeout(async ()=>{
-            const [roomId, trade, phase] = key.split(':');
-            const { error } = await sb.from('tasks')
-              .update({ notes: ta.value, updated_at: new Date().toISOString() })
-              .eq('room_id', roomId).eq('trade', trade).eq('phase', phase);
-            if(error) alert(error.message);
-          }, 600));
-        });
-      });
-
-      // uploads
-      roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp=>{
-        inp.addEventListener('change', async ()=>{
-          const file = inp.files?.[0]; if(!file) return;
-          if (!currentProjectId || !currentUser) return alert('Please sign in and choose a project first.');
-          const [roomId, trade, phase] = (inp.getAttribute('data-upload-for')||'').split(':');
-          const path = `${currentProjectId}/${roomId}/${trade}/${Date.now()}_${file.name}`;
-          const { error: upErr } = await sb.storage.from('photos').upload(path, file, { cacheControl: '3600', upsert:false });
-          if(upErr) return alert(upErr.message);
-          const { error: insErr } = await sb.from('photos').insert({
-            project_id: currentProjectId, room_id: roomId, trade, phase, path, uploaded_by: currentUser.email
-          });
-          if (insErr) return alert(insErr.message);
-          await renderAllPhotos(currentProjectId);
-          alert('Photo uploaded');
-        });
-      });
-    }
-
+    /* ===== progress recalculation ===== */
     function refreshProgressUI(){
-      // per-room (virtual totals)
+      // per-room
       roomsEl.querySelectorAll('details[data-room]').forEach(roomWrap=>{
         const roomId = roomWrap.getAttribute('data-room');
-        const s = roomStats(roomId);
-        const pct = Math.round(100 * s.done / (s.total||1));
+        const rTasks = tasksCache.filter(t => String(t.room_id)===String(roomId));
+        const total = rTasks.length || 1;
+        const done = rTasks.filter(t=>t.done).length;
+        const pct = Math.round(100*done/total);
         const summary = roomWrap.querySelector('summary');
         if(summary){
           summary.querySelector('.progress > span').style.width = pct+'%';
           const spans = summary.querySelectorAll('.small.muted');
-          if(spans[0]) spans[0].textContent = `${s.done}/${s.total}`;
+          if(spans[0]) spans[0].textContent = `${done}/${total}`;
           if(spans[1]) spans[1].textContent = `${pct}%`;
         }
       });
@@ -523,9 +431,10 @@
       // per-floor
       roomsEl.querySelectorAll('details[data-floor]').forEach(fWrap=>{
         const roomIds = Array.from(fWrap.querySelectorAll('details[data-room]')).map(x=>x.getAttribute('data-room'));
-        let total=0, done=0;
-        for (const id of roomIds){ const s = roomStats(id); total+=s.total; done+=s.done; }
-        const pct = Math.round(100*done/(total||1));
+        const fTasks = tasksCache.filter(t=> roomIds.includes(String(t.room_id)));
+        const total = fTasks.length || 1;
+        const done = fTasks.filter(t=>t.done).length;
+        const pct = Math.round(100*done/total);
         const summary = fWrap.querySelector('summary');
         if(summary){
           summary.querySelector('.progress > span').style.width = pct+'%';
@@ -536,11 +445,89 @@
       });
 
       // overall
-      let allT=0, allD=0;
-      for (const r of roomsCache){ const s = roomStats(r.id); allT+=s.total; allD+=s.done; }
-      const pct = Math.round(100*allD/(allT||1));
+      const allTotal = tasksCache.length || 1;
+      const allDone = tasksCache.filter(t=>t.done).length;
+      const pct = Math.round(100*allDone/allTotal);
       overallBar.style.width = pct + '%';
       overallPct.textContent = pct + '%';
+    }
+
+    /* ===== 7) Handlers ===== */
+    function attachRoomHandlers(){
+      // toggle done (create on first tick if needed — no project_id)
+      roomsEl.querySelectorAll('input[type="checkbox"][data-task-id], input[type="checkbox"][data-new="1"]').forEach(cb=>{
+        cb.addEventListener('change', async (e)=>{
+          const el = e.target;
+          const isNew = el.getAttribute('data-new') === '1';
+          const room_id = el.getAttribute('data-room-id');
+          const trade = el.getAttribute('data-trade');
+          const phase = el.getAttribute('data-phase');
+          const description = el.getAttribute('data-desc') || '';
+          const checked = !!el.checked;
+
+          try{
+            if(isNew){
+              const { data: ins, error: insErr } = await sb
+                .from('tasks')
+                .insert({ room_id, trade, phase, description, done: true })
+                .select('id,room_id,trade,phase,description,done')
+                .single();
+              if(insErr) throw insErr;
+
+              // reflect locally
+              tasksCache.push(ins);
+              // convert this checkbox to a “real” task
+              el.setAttribute('data-task-id', ins.id);
+              el.setAttribute('data-new','0');
+            }else{
+              const id = el.getAttribute('data-task-id');
+              const { error } = await sb.from('tasks')
+                .update({ done: checked, updated_at: new Date().toISOString() })
+                .eq('id', id);
+              if(error) throw error;
+
+              const t = tasksCache.find(x=>String(x.id)===String(id));
+              if(t) t.done = checked;
+            }
+          }catch(err){
+            alert(err.message || String(err));
+            el.checked = !checked; // revert on error
+          }finally{
+            refreshProgressUI();
+          }
+        });
+      });
+
+      // notes (debounced)
+      const timers = new Map();
+      roomsEl.querySelectorAll('textarea[data-note-for]').forEach(ta=>{
+        ta.addEventListener('input', ()=>{
+          const key = ta.getAttribute('data-note-for');
+          clearTimeout(timers.get(key));
+          timers.set(key, setTimeout(async ()=>{
+            const [room_id, trade, phase] = key.split(':');
+            // Update notes on all tasks that match this room/trade/phase
+            const { error } = await sb.from('tasks')
+              .update({ notes: ta.value, updated_at: new Date().toISOString() })
+              .eq('room_id', room_id).eq('trade', trade).eq('phase', phase);
+            if(error) alert(error.message);
+          }, 600));
+        });
+      });
+
+      // uploads
+      roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp=>{
+        inp.addEventListener('change', async ()=>{
+          const file = inp.files?.[0]; if(!file) return;
+          const [roomId, trade, phase] = (inp.getAttribute('data-upload-for')||'').split(':');
+          const path = `${currentProjectId}/${roomId}/${trade}/${Date.now()}_${file.name}`;
+          const { error: upErr } = await sb.storage.from('photos').upload(path, file, { cacheControl:'3600', upsert:false });
+          if(upErr) return alert(upErr.message);
+          await sb.from('photos').insert({ project_id: currentProjectId, room_id: roomId, trade, phase, path, uploaded_by: currentUser?.email || '' }).catch(()=>{});
+          await renderAllPhotos(currentProjectId);
+          alert('Photo uploaded');
+        });
+      });
     }
 
     /* ===== 8) Dashboard lists ===== */
@@ -561,37 +548,28 @@
       `).join('');
     }
 
-    // Global + per-room thumbnails
     async function renderAllPhotos(pid){
       const { data: ph, error } = await sb
         .from('photos')
-        .select('path,uploaded_by,created_at,room_id')
+        .select('path,uploaded_by,created_at')
         .eq('project_id', pid)
         .order('created_at', { ascending:false })
         .limit(300);
-
-      if (error) { allPhotosEl.innerHTML = '<div class="muted">Error loading photos</div>'; return; }
+      if(error){ allPhotosEl.innerHTML = '<div class="muted">Error loading photos</div>'; return; }
 
       allPhotosEl.innerHTML = '';
-      document.querySelectorAll('[data-room-thumbs]').forEach(el => el.innerHTML = '');
-
-      for (const p of (ph || [])) {
+      for(const p of (ph||[])){
         const { data: pub } = sb.storage.from('photos').getPublicUrl(p.path);
-        const makeImg = () => {
-          const img = new Image();
-          img.src = pub.publicUrl;
-          img.alt = p.path.split('/').pop();
-          img.title = `${p.uploaded_by || ''}\n${new Date(p.created_at).toLocaleString()}`;
-          img.addEventListener('click', () => window.open(pub.publicUrl, '_blank'));
-          return img;
-        };
-        allPhotosEl.appendChild(makeImg());
-        const roomStrip = document.querySelector(`[data-room-thumbs="${p.room_id}"]`);
-        if (roomStrip) roomStrip.appendChild(makeImg());
+        const img = new Image();
+        img.src = pub.publicUrl;
+        img.alt = p.path.split('/').pop();
+        img.title = `${p.uploaded_by || ''}\n${new Date(p.created_at).toLocaleString()}`;
+        img.addEventListener('click', ()=> window.open(pub.publicUrl, '_blank'));
+        allPhotosEl.appendChild(img);
       }
     }
 
-    /* ===== 9) Search (rooms + trades/phases/descriptions) ===== */
+    /* ===== 9) Search (rooms + tasks + trades) ===== */
     searchInput.addEventListener('input', ()=>{
       const q = (searchInput.value||'').toLowerCase().trim();
 
@@ -606,6 +584,8 @@
         (t.trade||'').toLowerCase().includes(q) ||
         (t.phase||'').toLowerCase().includes(q);
 
+      const tradeQueryHit = TRADE_DEFS.some(td => td.name.toLowerCase().includes(q));
+
       roomsEl.querySelectorAll('details[data-floor]').forEach(f=>{
         let anyRoomHit = false;
 
@@ -613,10 +593,9 @@
           const roomId = r.getAttribute('data-room');
           const roomName = r.querySelector('summary strong')?.textContent.toLowerCase() || '';
           const tasks = tasksCache.filter(t => String(t.room_id)===String(roomId));
-
-          // also match default task names when there are no rows yet
           const defaultHits = DEFAULT_TASKS.some(d => d.toLowerCase().includes(q));
-          const hit = roomName.includes(q) || tasks.some(matchesText) || defaultHits;
+
+          const hit = roomName.includes(q) || tasks.some(matchesText) || defaultHits || tradeQueryHit;
 
           r.style.display = hit ? '' : 'none';
           if (hit) anyRoomHit = true;
@@ -636,7 +615,7 @@
       const trade = btn.dataset.trade || null;
       const phase = btn.dataset.phase || null;
       const whoId = session.user.id;
-      const whoName= session.user.email || session.user.user_metadata?.full_name || 'unknown';
+      const whoName = session.user.email || session.user.user_metadata?.full_name || 'unknown';
       if (!roomId || !trade) return alert('Missing room or trade on sign-off button.');
 
       const { error } = await sb.from('signoffs').insert({
