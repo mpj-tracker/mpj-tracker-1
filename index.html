@@ -20,9 +20,10 @@
       --joinery:#198754; --plumbing:#0d6efd; --electrical:#dc3545;
       --plasterer:#6f42c1; --decorators:#fd7e14; --tiling:#85e3e3; --special:#20c997;
     }
-    *{box-sizing:border-box} html,body{height:100%}
+    *{box-sizing:border-box}
+    html,body{height:100%}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:#fff;color:var(--text)}
-    header{position:sticky;top:0;background:var(--brand);color:#fff}
+    header{position:sticky;top:0;background:var(--brand);color:#fff;z-index:10}
     .bar{max-width:1200px;margin:0 auto;display:flex;gap:.75rem;align-items:center;padding:.6rem .9rem}
     .brand{display:flex;gap:.6rem;align-items:center}
     .brand img{height:28px}
@@ -46,6 +47,7 @@
     .task{border:1px dashed #e5e7eb;border-radius:12px;padding:.75rem;margin:.6rem 0}
     .note{width:100%;min-height:70px;border-radius:10px;border:1px solid #e5e7eb;padding:.6rem}
     .hidden{display:none}
+
     /* trade chips */
     .trade-Joinery .chip.trade{background:var(--joinery);color:#fff}
     .trade-Plumbing .chip.trade{background:var(--plumbing);color:#fff}
@@ -54,9 +56,15 @@
     .trade-Decorators .chip.trade{background:var(--decorators);color:#fff}
     .trade-Tiling .chip.trade{background:var(--tiling);color:#000}
     .trade-Specialist .chip.trade{background:var(--special);color:#000}
+
+    /* tiny loading veil to avoid “frozen” feel */
+    #veil{position:fixed;inset:0;background:#fff;display:flex;align-items:center;justify-content:center;z-index:9999}
+    #veil.hide{opacity:0;pointer-events:none;transition:opacity .25s ease}
   </style>
 </head>
 <body>
+  <div id="veil"><div class="small muted">Loading…</div></div>
+
   <header>
     <div class="bar">
       <div class="brand">
@@ -68,18 +76,15 @@
 
   <main>
     <!-- Auth -->
-    <div id="auth-box" class="card">
-      <h2>Login / Sign Up</h2>
-      <p class="small muted">Use your email + password once on this device. You’ll stay signed in.</p>
+    <div id="auth-box" class="card hidden">
+      <h2>Sign in once on this device</h2>
+      <p class="small muted">You’ll stay signed in. Use <code>?logout=1</code> in the URL to force sign out.</p>
       <div class="row">
-        <input id="email" class="input" placeholder="Enter your email" style="max-width:260px"/>
-        <input id="password" class="input" placeholder="Enter your password" type="password" style="max-width:180px"/>
+        <input id="email" class="input" placeholder="Email" style="max-width:260px"/>
+        <input id="password" class="input" placeholder="Password" type="password" style="max-width:180px"/>
         <button id="signup-btn" class="btn">Sign Up</button>
         <button id="login-btn" class="btn accent">Log In</button>
-        <!-- Hidden sign-out; use ?logout=1 for emergency -->
-        <button id="logout-btn" class="btn hidden">Sign out</button>
       </div>
-      <p class="small muted">Emergency log out: add <code>?logout=1</code> to the URL.</p>
     </div>
 
     <!-- Project -->
@@ -120,14 +125,19 @@
 
   <script defer>
   (async function(){
-    /* ===== 1) Supabase client ===== */
+    /* ===== 1) Supabase client (persistent) ===== */
     const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+      auth: {
+        persistSession: true, // keep the session in localStorage
+        autoRefreshToken: true, // refresh in background
+        detectSessionInUrl: true
+      }
     });
 
-    /* ===== 2) DOM refs ===== */
+    /* ===== 2) DOM ===== */
+    const veil = document.getElementById('veil');
     const authBox = document.getElementById('auth-box');
     const projectBox = document.getElementById('project-box');
     const dash = document.getElementById('dash');
@@ -138,7 +148,6 @@
     const passwordInput = document.getElementById('password');
     const signupBtn = document.getElementById('signup-btn');
     const loginBtn = document.getElementById('login-btn');
-    const logoutBtn = document.getElementById('logout-btn');
 
     const projectNameInput = document.getElementById('project-name');
     const projectAddressInput = document.getElementById('project-address');
@@ -151,7 +160,6 @@
     const overallPct = document.getElementById('overall-pct');
 
     /* ===== 3) Helpers/State ===== */
-    const ONE_TIME_KEY = 'mpj_one_time_login';
     const FLOOR_ORDER = ['Basement','Ground Floor','1st Floor','2nd Floor','Other','Garage','Roof'];
     const safe = s => (s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
     const by = k => (a,b)=> (a[k]||'').localeCompare(b[k]||'');
@@ -166,37 +174,26 @@
       'specialist':'Specialist','specialists':'Specialist'
     };
     const canonTrade = t => { if(!t) return ''; const k = String(t).trim().toLowerCase(); return TRADE_ALIASES[k] || t; };
-
-    const TRADE_DEFS = [
-      { name:'Joinery', phases:['First fix','Second fix','Extras'] },
-      { name:'Electrical', phases:['First fix','Second fix','Extras'] },
-      { name:'Plumbing', phases:['First fix','Second fix','Extras'] },
-      { name:'Plasterer', phases:['First fix','Second fix','Extras'] },
-      { name:'Decorators', phases:['First fix','Second fix','Extras'] },
-      { name:'Tiling', phases:['Walls','Floor','Extras'] },
-      { name:'Specialist', phases:['Extras'] },
-    ];
+    const TRADE_LIST = ['Joinery','Electrical','Plumbing','Plasterer','Decorators','Tiling','Specialist'];
 
     let session=null, currentUser=null, currentProjectId=null;
     let roomsCache=[], tasksCache=[];
 
-    // emergency logout via ?logout=1
+    /* ===== 0) Emergency logout via ?logout=1 ===== */
     (function emergencyLogout(){
-      const url = new URL(window.location.href);
+      const url = new URL(location.href);
       if(url.searchParams.get('logout')==='1'){
-        try{ localStorage.removeItem(ONE_TIME_KEY); sb.auth.signOut().catch(()=>{}); }
-        finally{
-          url.searchParams.delete('logout');
-          location.href = url.toString();
-        }
+        try{ sb.auth.signOut().finally(()=>localStorage.clear()); }
+        finally{ url.searchParams.delete('logout'); location.replace(url.toString()); }
       }
     })();
 
+    /* ===== UI helpers ===== */
     function showAuth(){ authBox.classList.remove('hidden'); projectBox.classList.add('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
     function showProject(){ authBox.classList.add('hidden'); projectBox.classList.remove('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
     function showApp(){ authBox.classList.add('hidden'); projectBox.classList.add('hidden'); dash.classList.remove('hidden'); }
 
-    /* ===== 4) Auth (one-time) ===== */
+    /* ===== 4) Auth (stay signed in) ===== */
     signupBtn.addEventListener('click', async ()=>{
       const email=(emailInput.value||'').trim(), pw=passwordInput.value||'';
       if(!email||!pw) return alert('Please enter email and password');
@@ -214,36 +211,31 @@
       if(!email||!pw) return alert('Please enter email and password');
       loginBtn.disabled=true;
       try{
-        const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
+        const { error } = await sb.auth.signInWithPassword({ email, password: pw });
         if(error) throw error;
-        localStorage.setItem(ONE_TIME_KEY,'1'); // mark device as first-login-complete
+        // session is persisted automatically by Supabase in localStorage
       }catch(err){ alert(err?.message||String(err)); }
       finally{ loginBtn.disabled=false; }
     });
 
-    // hidden button, but keep for completeness
-    logoutBtn.addEventListener('click', async ()=>{
-      await sb.auth.signOut();
-      localStorage.removeItem(ONE_TIME_KEY);
-    });
-
+    // keep UI synced with auth; also attempt silent refresh on page load
     sb.auth.onAuthStateChange(async ()=>{
-      try{
-        const { data } = await sb.auth.getSession();
-        session = data.session;
-        currentUser = session?.user || null;
-        authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email||currentUser.id}` : 'Signed out';
-        if(currentUser) showProject(); else showAuth();
-      }catch(err){ console.error('[auth state]', err); }
+      const { data } = await sb.auth.getSession();
+      session = data.session; currentUser = session?.user || null;
+      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email||currentUser.id}` : 'Signed out';
+      if(currentUser) showProject(); else showAuth();
+      // remove veil once we know the state
+      veil.classList.add('hide');
     });
 
-    // initial
+    // initial (fast resume)
     try{
       const { data } = await sb.auth.getSession();
       session = data.session; currentUser = session?.user || null;
       authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email||currentUser.id}` : 'Signed out';
       if(currentUser) showProject(); else showAuth();
-    }catch(err){ console.error('[auth init]', err); showAuth(); }
+    }catch{ showAuth(); }
+    finally{ setTimeout(()=>veil.classList.add('hide'), 150); }
 
     /* ===== 5) Use/Create project ===== */
     useProjectBtn.addEventListener('click', async ()=>{
@@ -266,7 +258,7 @@
           if(insErr) throw insErr;
           currentProjectId = ins.id;
 
-          // best-effort seeders (if you created these RPCs)
+          // Optional seeds (ignore errors if RPCs not present)
           await sb.rpc('seed_full_project', { p_name:name, p_site:addr }).catch(()=>{});
           await sb.rpc('seed_trade_tasks_for_project', { p_project_id: currentProjectId }).catch(()=>{});
         }
@@ -281,36 +273,30 @@
     async function renderFloors(pid){
       roomsEl.innerHTML='<div class="muted">Loading…</div>';
 
-      // rooms
       const { data: rooms, error: roomsErr } = await sb
         .from('rooms').select('id,floor_name,room_name').eq('project_id', pid).order('floor_name');
       if(roomsErr){ roomsEl.innerHTML='<div class="muted">Could not load rooms.</div>'; return; }
       roomsCache = rooms.slice();
 
-      // tasks
       const roomIds = rooms.map(r=>r.id);
       const { data: tasks } = await sb
         .from('tasks').select('id,room_id,trade,phase,description,done,notes')
         .in('room_id', roomIds);
       tasksCache = (tasks||[]).map(t=>({...t, done: !!t.done}));
 
-      // group rooms by floor
       const floors = {};
       for(const r of rooms){
         const key = r.floor_name || 'Other';
         (floors[key] ||= []).push(r);
       }
 
-      // ordered floors
       const ordered = Object.keys(floors).sort((a,b)=>{
-        const order = ['Basement','Ground Floor','1st Floor','2nd Floor','Other','Garage','Roof'];
-        const ia=order.indexOf(a), ib=order.indexOf(b);
+        const ia=FLOOR_ORDER.indexOf(a), ib=FLOOR_ORDER.indexOf(b);
         if(ia>-1 && ib>-1) return ia-ib;
         if(ia>-1) return -1; if(ib>-1) return 1;
         return a.localeCompare(b);
       });
 
-      // build HTML
       const out=[];
       for(const fname of ordered){
         const fRooms = floors[fname].sort(by('room_name'));
@@ -362,17 +348,24 @@
     }
 
     function tradeBlocks(roomId){
-      return [
-        'Joinery','Electrical','Plumbing','Plasterer','Decorators','Tiling','Specialist'
-      ].map(tradeName=>{
+      return TRADE_LIST.map(tradeName=>{
         const tTasks = tasksCache.filter(t=> t.room_id===roomId && canonTrade(t.trade)===tradeName);
         const byPhase = {};
         for(const t of tTasks){
           const key = t.phase || 'General';
           (byPhase[key] ||= []).push(t);
         }
-        const phases = (TRADE_DEFS.find(x=>x.name===tradeName)?.phases)||Object.keys(byPhase);
-        const sections = phases.map(ph=>{
+        const defaultPhases = {
+          'Joinery':['First fix','Second fix','Extras'],
+          'Electrical':['First fix','Second fix','Extras'],
+          'Plumbing':['First fix','Second fix','Extras'],
+          'Plasterer':['First fix','Second fix','Extras'],
+          'Decorators':['First fix','Second fix','Extras'],
+          'Tiling':['Walls','Floor','Extras'],
+          'Specialist':['Extras']
+        }[tradeName] || Object.keys(byPhase);
+
+        const sections = defaultPhases.map(ph=>{
           const list = byPhase[ph]||[];
           return `
             <div class="task trade-${tradeName}">
@@ -409,8 +402,9 @@
       }).join('');
     }
 
+    /* ===== Handlers ===== */
     function attachRoomHandlers(){
-      // toggle done
+      // tick/untick tasks
       roomsEl.querySelectorAll('input[type="checkbox"][data-task-id]').forEach(cb=>{
         cb.addEventListener('change', async (e)=>{
           const id = e.target.getAttribute('data-task-id');
@@ -423,7 +417,7 @@
         });
       });
 
-      // notes (debounced on (room,trade,phase))
+      // notes (debounced per (room,trade,phase))
       const timers = new Map();
       roomsEl.querySelectorAll('textarea[data-note-for]').forEach(ta=>{
         ta.addEventListener('input', ()=>{
@@ -439,7 +433,7 @@
         });
       });
 
-      // uploads
+      // photo uploads
       roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp=>{
         inp.addEventListener('change', async ()=>{
           const file = inp.files?.[0]; if(!file) return;
@@ -447,7 +441,7 @@
           const path = `${currentProjectId}/${roomId}/${trade}/${Date.now()}_${file.name}`;
           const { error: upErr } = await sb.storage.from('photos').upload(path, file, { cacheControl:'3600', upsert:false });
           if(upErr) return alert(upErr.message);
-          await sb.from('photos').insert({ project_id: currentProjectId, room_id: roomId, trade, phase, path, uploaded_by: currentUser.email }).catch(()=>{});
+          await sb.from('photos').insert({ project_id: currentProjectId, room_id: roomId, trade, phase, path, uploaded_by: currentUser?.email||'' }).catch(()=>{});
           await renderAllPhotos(currentProjectId);
           alert('Photo uploaded');
         });
@@ -533,7 +527,7 @@
       }
     }
 
-    /* ===== 8) Search ===== */
+    /* ===== 8) Search (rooms only per your last request) ===== */
     searchInput.addEventListener('input', ()=>{
       const q = (searchInput.value||'').toLowerCase();
       if(!q){ document.querySelectorAll('details[data-floor]').forEach(d=> d.open=false); }
@@ -574,8 +568,13 @@
       await renderSignoffs(currentProjectId);
     });
 
-    /* ===== 10) Global debug (helps if anything freezes) ===== */
-    window.addEventListener('error', e=> console.error('[global error]', e.message, e.error));
+    /* ===== 10) Keep-alive (prevents surprise sign-outs on some iOS combos) ===== */
+    setInterval(async ()=>{
+      try{ await sb.auth.getSession(); }catch{}
+    }, 5*60*1000); // every 5 minutes
+
+    /* Debug hooks (optional) */
+    window.addEventListener('error', e=> console.error('[error]', e.message));
     window.addEventListener('unhandledrejection', e=> console.error('[promise]', e.reason));
   })();
   </script>
