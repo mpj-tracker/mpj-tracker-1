@@ -1,0 +1,56 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>Auth Test</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <h1>Supabase Auth Test</h1>
+  <div id="status">Loading…</div>
+
+  <div>
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
+    <button id="signup">Sign Up</button>
+    <button id="login">Log In</button>
+    <button id="logout">Sign Out</button>
+  </div>
+
+  <script>
+    const sb = window.supabase.createClient(
+      "https://zpnqruthpknncpiiztxf.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4",
+      { auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true } }
+    );
+
+    const status = document.getElementById("status");
+    const email = document.getElementById("email");
+    const password = document.getElementById("password");
+
+    document.getElementById("signup").onclick = async ()=>{
+      const { error } = await sb.auth.signUp({ email: email.value, password: password.value });
+      status.textContent = error ? "Sign up error: " + error.message : "Sign up ok, check inbox if confirmation required";
+    };
+
+    document.getElementById("login").onclick = async ()=>{
+      const { error } = await sb.auth.signInWithPassword({ email: email.value, password: password.value });
+      status.textContent = error ? "Login error: " + error.message : "Login success!";
+    };
+
+    document.getElementById("logout").onclick = async ()=>{
+      await sb.auth.signOut();
+      status.textContent = "Signed out";
+    };
+
+    sb.auth.onAuthStateChange(async (_evt, sess)=>{
+      status.textContent = sess?.user ? "Signed in: " + sess.user.email : "Signed out";
+    });
+
+    (async()=>{
+      const { data } = await sb.auth.getSession();
+      status.textContent = data.session?.user ? "Signed in: " + data.session.user.email : "Signed out";
+    })();
+  </script>
+</body>
+</html>
