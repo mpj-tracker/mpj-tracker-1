@@ -154,6 +154,9 @@
     const safe = s => (s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
     const by = k => (a,b)=> (a[k]||'').localeCompare(b[k]||'');
 
+    // show these tasks for every trade by default
+    const DEFAULT_TASKS = ['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'];
+
     const TRADE_ALIASES = {
       'joiners':'Joinery','joiner':'Joinery','joinery':'Joinery',
       'electricians':'Electrical','electrician':'Electrical','electrical':'Electrical',
@@ -166,13 +169,13 @@
     const canonTrade = t => { if(!t) return ''; const k = String(t).trim().toLowerCase(); return TRADE_ALIASES[k] || t; };
 
     const TRADE_DEFS = [
-      { name:'Joinery', phases:['First fix','Second fix','Extras'] },
-      { name:'Electrical', phases:['First fix','Second fix','Extras'] },
-      { name:'Plumbing', phases:['First fix','Second fix','Extras'] },
-      { name:'Plasterer', phases:['First fix','Second fix','Extras'] },
-      { name:'Decorators', phases:['First fix','Second fix','Extras'] },
-      { name:'Tiling', phases:['Walls','Floor','Extras'] },
-      { name:'Specialist', phases:['Extras'] },
+      { name:'Joinery', phases:['General'] },
+      { name:'Electrical', phases:['General'] },
+      { name:'Plumbing', phases:['General'] },
+      { name:'Plasterer', phases:['General'] },
+      { name:'Decorators', phases:['General'] },
+      { name:'Tiling', phases:['General'] },
+      { name:'Specialist', phases:['General'] },
     ];
 
     let session=null, currentUser=null, currentProjectId=null;
@@ -182,7 +185,7 @@
     function showProject(){ authBox.classList.add('hidden'); projectBox.classList.remove('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
     function showApp(){ authBox.classList.add('hidden'); projectBox.classList.add('hidden'); dash.classList.remove('hidden'); }
 
-    /* ===== 4) Auth (password) ===== */
+    /* ===== 4) Auth ===== */
     signupBtn.addEventListener('click', async () => {
       const email = (emailInput.value || '').trim();
       const pw = passwordInput.value || '';
@@ -212,7 +215,6 @@
       try{ await sb.auth.signOut(); }catch(err){ alert(err.message||String(err)); }
     });
 
-    // Keep UI synced with auth
     sb.auth.onAuthStateChange(async ()=>{
       const s = await sb.auth.getSession();
       session = s.data.session || null;
@@ -221,7 +223,6 @@
       currentUser ? showProject() : showAuth();
     });
 
-    // Initial session
     {
       const s = await sb.auth.getSession();
       session = s.data.session || null;
@@ -239,12 +240,9 @@
 
       useProjectBtn.disabled = true;
       try{
-        // find by user + name
         const { data: existing, error: findErr } = await sb
           .from('projects').select('id')
-          .eq('user_id', currentUser.id)
-          .eq('name', name)
-          .limit(1);
+          .eq('user_id', currentUser.id).eq('name', name).limit(1);
         if (findErr) throw findErr;
 
         if (existing?.length){
@@ -253,17 +251,13 @@
           const { data: ins, error: insErr } = await sb
             .from('projects')
             .insert({ name, site_address: addr, user_id: currentUser.id })
-            .select('id')
-            .single();
+            .select('id').single();
           if (insErr) throw insErr;
           currentProjectId = ins.id;
 
-          // Optional seeds (will just warn if not present)
-          const { error: s1 } = await sb.rpc('seed_full_project', { p_name:name, p_site:addr });
-          if (s1) console.warn('seed_full_project:', s1?.message||s1);
-
-          const { error: s2 } = await sb.rpc('seed_trade_tasks_for_project', { p_project_id: currentProjectId });
-          if (s2) console.warn('seed_trade_tasks_for_project:', s2?.message||s2);
+          // Optional seeds
+          await sb.rpc('seed_full_project', { p_name:name, p_site:addr }).catch(()=>{});
+          await sb.rpc('seed_trade_tasks_for_project', { p_project_id: currentProjectId }).catch(()=>{});
         }
 
         await renderFloors(currentProjectId);
@@ -272,11 +266,22 @@
       finally{ useProjectBtn.disabled=false; }
     });
 
+    /* ===== Helpers for progress with virtual totals ===== */
+    function roomStats(roomId){
+      let total = 0, done = 0;
+      for (const td of TRADE_DEFS){
+        const real = tasksCache.filter(t => String(t.room_id)===String(roomId) && canonTrade(t.trade)===td.name);
+        const count = real.length;
+        total += Math.max(count, DEFAULT_TASKS.length);
+        done += real.filter(t=>t.done).length;
+      }
+      return { total, done };
+    }
+
     /* ===== 6) Render floors/rooms/tasks ===== */
     async function renderFloors(pid){
       roomsEl.innerHTML = '<div class="muted">Loading…</div>';
 
-      // Rooms
       const { data: rooms, error: roomsErr } = await sb
         .from('rooms')
         .select('id,floor_name,room_name')
@@ -285,7 +290,6 @@
       if (roomsErr){ roomsEl.innerHTML = '<div class="muted">Could not load rooms.</div>'; return; }
       roomsCache = rooms.slice();
 
-      // Tasks (for these rooms)
       const roomIds = rooms.map(r => r.id);
       const { data: tasks } = await sb
         .from('tasks')
@@ -294,14 +298,9 @@
         .filter(t => roomIds.some(id => String(id) === String(t.room_id)))
         .map(t => ({ ...t, done: !!t.done }));
 
-      // Group by floor
       const floors = {};
-      for (const r of rooms){
-        const key = r.floor_name || 'Other';
-        (floors[key] ||= []).push(r);
-      }
+      for (const r of rooms){ (floors[r.floor_name||'Other'] ||= []).push(r); }
 
-      // Order floors (by known order, then alpha)
       const ordered = Object.keys(floors).sort((a,b)=>{
         const ia=FLOOR_ORDER.indexOf(a), ib=FLOOR_ORDER.indexOf(b);
         if(ia>-1 && ib>-1) return ia-ib;
@@ -309,14 +308,16 @@
         return a.localeCompare(b);
       });
 
-      // Build floor blocks
       const out = [];
       for (const fname of ordered){
         const fRooms = floors[fname].sort(by('room_name'));
-        const floorTaskList = tasksCache.filter(t => fRooms.some(r => String(r.id) === String(t.room_id)));
-        const floorTotal = floorTaskList.length || 1;
-        const floorDone = floorTaskList.filter(t => t.done).length;
-        const floorPct = Math.round(100 * floorDone / floorTotal);
+        // floor stats from per-room virtual totals
+        let floorTotal = 0, floorDone = 0;
+        for (const r of fRooms){
+          const s = roomStats(r.id);
+          floorTotal += s.total; floorDone += s.done;
+        }
+        const floorPct = Math.round(100 * floorDone / (floorTotal||1));
 
         out.push(`
           <details class="card" data-floor="${safe(fname)}">
@@ -337,21 +338,18 @@
       attachRoomHandlers();
       refreshProgressUI();
       await renderSignoffs(pid);
-      await renderAllPhotos(pid); // fills global + per-room strips
+      await renderAllPhotos(pid);
     }
 
-    // ---- room card with its own thumbs strip (filled later) ----
     function roomBlock(r){
-      const rTasks = tasksCache.filter(t => String(t.room_id) === String(r.id));
-      const total = rTasks.length || 1;
-      const done = rTasks.filter(t => t.done).length;
-      const pct = Math.round(100 * done / total);
+      const s = roomStats(r.id);
+      const pct = Math.round(100 * s.done / (s.total||1));
 
       return `
         <details class="card" data-room="${r.id}">
           <summary class="row" style="gap:1rem;align-items:center">
             <strong>${safe(r.room_name)}</strong>
-            <span class="small muted">${done}/${total}</span>
+            <span class="small muted">${s.done}/${s.total}</span>
             <div class="progress" style="flex:1;max-width:300px"><span style="width:${pct}%"></span></div>
             <span class="small muted">${pct}%</span>
           </summary>
@@ -365,59 +363,54 @@
       `;
     }
 
-    // ---- trade sections; tolerant of missing trade/phase ----
+    // Always show all trades. When a phase has no rows, render DEFAULT_TASKS as placeholders.
     function tradeBlocks(roomId){
-      const roomTasks = tasksCache.filter(t => String(t.room_id) === String(roomId));
+      return TRADE_DEFS.map(td=>{
+        const tAll = tasksCache.filter(t => String(t.room_id)===String(roomId) && canonTrade(t.trade)===td.name);
 
-      const byTrade = {};
-      for (const t of roomTasks){
-        const tr = canonTrade(t.trade) || 'Other';
-        (byTrade[tr] ||= []).push(t);
-      }
-
-      const knownOrder = TRADE_DEFS.map(d=>d.name);
-      const extra = Object.keys(byTrade).filter(tr => !knownOrder.includes(tr));
-      const tradesOrdered = [...knownOrder, ...extra].filter(tr => byTrade[tr]?.length);
-
-      return tradesOrdered.map(trName=>{
-        const tTasks = byTrade[trName];
+        // group real tasks by phase
         const byPhase = {};
-        for (const t of tTasks){
-          const ph = t.phase || 'General';
-          (byPhase[ph] ||= []).push(t);
+        for (const t of tAll){
+          const key = t.phase || 'General';
+          (byPhase[key] ||= []).push(t);
         }
-        const phasesOrder = (TRADE_DEFS.find(d=>d.name===trName)?.phases) || Object.keys(byPhase);
 
-        const sections = phasesOrder.map(ph=>{
-          const list = byPhase[ph] || [];
+        const order = td.phases?.length ? td.phases : ['General'];
+
+        const sections = order.map(ph=>{
+          const real = byPhase[ph] || [];
+          // if none, create placeholders
+          const list = real.length
+            ? real
+            : DEFAULT_TASKS.map(desc => ({ id:null, description:desc, done:false, _virtual:true }));
+
           return `
-            <div class="task trade-${trName}">
+            <div class="task trade-${td.name}">
               <div class="row" style="justify-content:space-between">
-                <span class="chip trade">${trName}</span>
+                <span class="chip trade">${td.name}</span>
                 <span class="chip">${safe(ph)}</span>
               </div>
               <div style="margin:.5rem 0">
-                ${
-                  list.length
-                    ? list.map(t => `
-                        <label class="row" style="gap:.5rem;margin:.25rem 0">
-                          <input type="checkbox" data-task-id="${t.id}" ${t.done ? 'checked' : ''}/>
-                          <span>${safe(t.description || `${t.trade||trName} ${t.phase||''}`)}</span>
-                        </label>
-                      `).join('')
-                    : '<div class="muted small">No tasks yet</div>'
-                }
+                ${list.map(t => `
+                  <label class="row" style="gap:.5rem;margin:.25rem 0">
+                    <input
+                      type="checkbox"
+                      ${t.id ? `data-task-id="${t.id}"` : `data-new="1" data-room-id="${roomId}" data-trade="${td.name}" data-phase="${safe(ph)}" data-desc="${safe(t.description)}"`}
+                      ${t.done ? 'checked' : ''}/>
+                    <span>${safe(t.description)}</span>
+                  </label>
+                `).join('')}
               </div>
               <div style="margin-top:.5rem">
                 <label class="small muted">Notes</label>
-                <textarea class="note" data-note-for="${roomId}:${trName}:${ph}" placeholder="Add notes…"></textarea>
+                <textarea class="note" data-note-for="${roomId}:${td.name}:${ph}" placeholder="Add notes…"></textarea>
               </div>
               <div class="row" style="margin-top:.5rem">
-                <input type="file" accept="image/*" capture="environment" data-upload-for="${roomId}:${trName}:${ph}"/>
+                <input type="file" accept="image/*" capture="environment" data-upload-for="${roomId}:${td.name}:${ph}"/>
                 <button class="btn signoff-btn"
                         data-room-id="${roomId}"
                         data-task-id=""
-                        data-trade="${trName}"
+                        data-trade="${td.name}"
                         data-phase="${safe(ph)}">Sign off</button>
               </div>
             </div>
@@ -430,15 +423,49 @@
 
     /* ===== 7) Handlers ===== */
     function attachRoomHandlers(){
-      // toggle done
-      roomsEl.querySelectorAll('input[type="checkbox"][data-task-id]').forEach(cb=>{
+      // toggle or create-on-first-check
+      roomsEl.querySelectorAll('input[type="checkbox"]').forEach(cb=>{
+        if (cb.dataset.handled) return;
+        cb.dataset.handled = '1';
+
         cb.addEventListener('change', async (e)=>{
-          const id = e.target.getAttribute('data-task-id');
-          const done = e.target.checked;
-          const { error } = await sb.from('tasks').update({ done, updated_at: new Date().toISOString() }).eq('id', id);
-          if(error) return alert(error.message);
-          const t = tasksCache.find(x=>String(x.id)===String(id));
-          if(t) t.done = done;
+          const el = e.target;
+          const hasId = !!el.dataset.taskId;
+          const checked = el.checked;
+
+          try {
+            if (hasId){
+              const id = el.dataset.taskId;
+              const { error } = await sb.from('tasks').update({ done: checked, updated_at: new Date().toISOString() }).eq('id', id);
+              if (error) throw error;
+              const t = tasksCache.find(x=>String(x.id)===String(id));
+              if (t) t.done = checked;
+            } else if (el.dataset.new === '1' && checked) {
+              // create the task on first tick
+              if (!currentProjectId || !currentUser) return alert('Please sign in and choose a project first.');
+              const room_id = el.dataset.roomId;
+              const trade = el.dataset.trade;
+              const phase = el.dataset.phase || 'General';
+              const description = el.dataset.desc || '';
+              const { data: ins, error: insErr } = await sb
+                .from('tasks')
+                .insert({ project_id: currentProjectId, room_id, trade, phase, description, done:true })
+                .select('id,room_id,trade,phase,description,done')
+                .single();
+              if (insErr) throw insErr;
+              tasksCache.push({ ...ins, done:true });
+              // convert this checkbox into a real one
+              el.dataset.taskId = ins.id;
+              delete el.dataset.new;
+            } else {
+              // unchecked a virtual box -> nothing to persist
+              el.checked = false;
+            }
+          } catch(err){
+            alert(err.message||String(err));
+            el.checked = !checked; // revert on error
+          }
+
           refreshProgressUI();
         });
       });
@@ -479,18 +506,16 @@
     }
 
     function refreshProgressUI(){
-      // per-room
+      // per-room (virtual totals)
       roomsEl.querySelectorAll('details[data-room]').forEach(roomWrap=>{
         const roomId = roomWrap.getAttribute('data-room');
-        const rTasks = tasksCache.filter(t => String(t.room_id) === String(roomId));
-        const total = rTasks.length || 1;
-        const done = rTasks.filter(t => t.done).length;
-        const pct = Math.round(100 * done / total);
+        const s = roomStats(roomId);
+        const pct = Math.round(100 * s.done / (s.total||1));
         const summary = roomWrap.querySelector('summary');
         if(summary){
           summary.querySelector('.progress > span').style.width = pct+'%';
           const spans = summary.querySelectorAll('.small.muted');
-          if(spans[0]) spans[0].textContent = `${done}/${total}`;
+          if(spans[0]) spans[0].textContent = `${s.done}/${s.total}`;
           if(spans[1]) spans[1].textContent = `${pct}%`;
         }
       });
@@ -498,10 +523,9 @@
       // per-floor
       roomsEl.querySelectorAll('details[data-floor]').forEach(fWrap=>{
         const roomIds = Array.from(fWrap.querySelectorAll('details[data-room]')).map(x=>x.getAttribute('data-room'));
-        const fTasks = tasksCache.filter(t=> roomIds.includes(String(t.room_id)));
-        const total = fTasks.length || 1;
-        const done = fTasks.filter(t=>t.done).length;
-        const pct = Math.round(100*done/total);
+        let total=0, done=0;
+        for (const id of roomIds){ const s = roomStats(id); total+=s.total; done+=s.done; }
+        const pct = Math.round(100*done/(total||1));
         const summary = fWrap.querySelector('summary');
         if(summary){
           summary.querySelector('.progress > span').style.width = pct+'%';
@@ -512,9 +536,9 @@
       });
 
       // overall
-      const allTotal = tasksCache.length || 1;
-      const allDone = tasksCache.filter(t=>t.done).length;
-      const pct = Math.round(100*allDone/allTotal);
+      let allT=0, allD=0;
+      for (const r of roomsCache){ const s = roomStats(r.id); allT+=s.total; allD+=s.done; }
+      const pct = Math.round(100*allD/(allT||1));
       overallBar.style.width = pct + '%';
       overallPct.textContent = pct + '%';
     }
@@ -537,7 +561,7 @@
       `).join('');
     }
 
-    // Global AND per-room thumbnails
+    // Global + per-room thumbnails
     async function renderAllPhotos(pid){
       const { data: ph, error } = await sb
         .from('photos')
@@ -546,10 +570,7 @@
         .order('created_at', { ascending:false })
         .limit(300);
 
-      if (error) {
-        allPhotosEl.innerHTML = '<div class="muted">Error loading photos</div>';
-        return;
-      }
+      if (error) { allPhotosEl.innerHTML = '<div class="muted">Error loading photos</div>'; return; }
 
       allPhotosEl.innerHTML = '';
       document.querySelectorAll('[data-room-thumbs]').forEach(el => el.innerHTML = '');
@@ -593,7 +614,9 @@
           const roomName = r.querySelector('summary strong')?.textContent.toLowerCase() || '';
           const tasks = tasksCache.filter(t => String(t.room_id)===String(roomId));
 
-          const hit = roomName.includes(q) || tasks.some(matchesText);
+          // also match default task names when there are no rows yet
+          const defaultHits = DEFAULT_TASKS.some(d => d.toLowerCase().includes(q));
+          const hit = roomName.includes(q) || tasks.some(matchesText) || defaultHits;
 
           r.style.display = hit ? '' : 'none';
           if (hit) anyRoomHit = true;
