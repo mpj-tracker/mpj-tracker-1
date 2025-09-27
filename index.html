@@ -1,202 +1,692 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>MPJ Tracker</title>
 
-  <!-- Supabase -->
+  <!-- Icons/Brand -->
+  <meta name="theme-color" content="#0b5f3b"/>
+  <link rel="icon" href="/favicon.ico"/>
+  <link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png"/>
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
+
+  <!-- Supabase v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-    header { background: #0b5f3b; color: #fff; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
-    header img { height: 30px; margin-right: 10px; }
-    .card { background: #f9f9f9; border: 1px solid #ddd; margin: 10px; padding: 10px; border-radius: 6px; }
-    .progress { height: 12px; background: #ddd; border-radius: 6px; margin: 5px 0; overflow: hidden; }
-    .progress-bar { height: 100%; background: #0b5f3b; width: 0%; transition: width 0.3s; }
-    .photo-thumb { width: 100px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
-    .hidden { display: none; }
-    details { margin: 5px; }
-    .admin-only { color: red; font-weight: bold; }
+    :root{
+      --brand:#0b5f3b; --text:#111827; --card:#fff; --chip:#eef1f4;
+      --joinery:#198754; --plumbing:#0d6efd; --electrical:#dc3545;
+      --plasterer:#6f42c1; --decorators:#fd7e14; --tiling:#85e3e3; --special:#20c997;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;background:#fff;color:var(--text)}
+    header{position:sticky;top:0;background:var(--brand);color:#fff;z-index:5}
+    .bar{max-width:1200px;margin:0 auto;display:flex;gap:.75rem;align-items:center;padding:.6rem .9rem}
+    .brand{display:flex;gap:.6rem;align-items:center}
+    .brand img{height:28px}
+    .pill{margin-left:auto;background:rgba(255,255,255,.15);padding:.35rem .6rem;border-radius:999px;font-weight:600}
+    main{max-width:1200px;margin:1rem auto;padding:0 .9rem}
+    .card{background:var(--card);border:1px solid #e5e7eb;border-radius:12px;padding:1rem;margin:.75rem 0}
+    .row{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+    .grid{display:grid;grid-template-columns:1fr;gap:1rem}
+    .btn{border:none;background:#e8eef0;padding:.55rem .85rem;border-radius:9px;cursor:pointer}
+    .btn.accent{background:#fff;color:var(--brand);border:1px solid var(--brand);font-weight:600}
+    .btn.danger{background:#fee2e2;color:#b91c1c;border:1px solid #fecaca}
+    .btn.right{margin-left:auto}
+    .input, select{width:100%;padding:.6rem .7rem;border-radius:9px;border:1px solid #e5e7eb;background:#fff}
+    .muted{color:#6b7280} .small{font-size:.85rem}
+    details.card{padding:0} details.card>summary{list-style:none;padding:1rem;border-radius:12px;cursor:pointer}
+    details.card[open]>summary{border-bottom:1px solid #eff2f4;border-bottom-left-radius:0;border-bottom-right-radius:0}
+    details.card>.body{padding:1rem}
+    .chip{display:inline-flex;align-items:center;gap:.35rem;background:var(--chip);padding:.2rem .45rem;border-radius:999px;font-size:.8rem}
+    .progress{height:10px;background:#e9eff2;border-radius:999px;overflow:hidden}
+    .progress>span{display:block;height:100%;background:var(--brand)}
+    .thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:.5rem}
+    .thumbs .thumb{position:relative}
+    .thumbs img{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:8px;border:1px solid #e6eaee;cursor:pointer}
+    .thumb .thumb-actions{position:absolute;inset:auto 6px 6px 6px;display:flex;gap:.4rem;justify-content:space-between}
+    .thumb .smallbtn{font-size:.75rem;border:1px solid #e5e7eb;background:#fff;border-radius:7px;padding:.15rem .4rem;opacity:.95}
+    .task{border:1px dashed #e5e7eb;border-radius:12px;padding:.75rem;margin:.6rem 0}
+    .note{width:100%;min-height:70px;border-radius:10px;border:1px solid #e5e7eb;padding:.6rem}
+    .hidden{display:none}
+
+    /* trade chips */
+    .trade-Joinery .chip.trade{background:var(--joinery);color:#fff}
+    .trade-Plumbing .chip.trade{background:var(--plumbing);color:#fff}
+    .trade-Electrical .chip.trade{background:var(--electrical);color:#fff}
+    .trade-Plasterer .chip.trade{background:var(--plasterer);color:#fff}
+    .trade-Decorators .chip.trade{background:var(--decorators);color:#fff}
+    .trade-Tiling .chip.trade{background:var(--tiling);color:#000}
+    .trade-Specialist .chip.trade{background:var(--special);color:#000}
+
+    /* diagnostics */
+    #diag-wrap summary{cursor:pointer}
+    #diag{white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace}
   </style>
 </head>
 <body>
-
-<header>
-  <div class="brand">
-    <img src="mpj-logo.png" alt="logo"><strong>MPJ Tracker</strong>
-  </div>
-  <div id="auth-state">Signed out</div>
-</header>
-
-<main>
-  <!-- Diagnostics hidden -->
-  <details>
-    <summary><strong>Diagnostics</strong> (click to open/close)</summary>
-    <div id="diag">Ready…</div>
-  </details>
-
-  <!-- Auth -->
-  <section id="auth-box">
-    <input id="email" placeholder="Email">
-    <input id="password" type="password" placeholder="Password">
-    <button id="signup-btn">Sign Up</button>
-    <button id="login-btn">Log In</button>
-    <button id="logout-btn" class="hidden">Log Out</button>
-  </section>
-
-  <!-- Project controls -->
-  <section id="project-box" class="hidden">
-    <select id="project-select"></select>
-    <button id="use-project">Load Project</button>
-    <div id="admin-controls" class="hidden admin-only">
-      <button id="archive-project">Archive Project</button>
-      <button id="unarchive-project">Unarchive Project</button>
+  <header>
+    <div class="bar">
+      <div class="brand">
+        <img src="/mpj-logo.png" alt="logo"/><strong>MPJ Tracker</strong>
+      </div>
+      <div id="auth-state" class="pill">Signed out</div>
     </div>
-  </section>
+  </header>
 
-  <!-- Dashboard -->
-  <section id="dash" class="hidden">
-    <h2>Project Dashboard</h2>
-    <div>Overall Progress <div class="progress"><div id="overall-bar" class="progress-bar"></div></div><span id="overall-pct">0%</span></div>
+  <!-- Diagnostics -->
+  <div id="diag-wrap">
+    <details class="card" open>
+      <summary><strong>Diagnostics</strong> (click to open/close)</summary>
+      <div class="row">
+        <button id="diag-rerun" class="btn">Re-run tests</button>
+        <button id="diag-clear-sw" class="btn">Force clear SW + caches</button>
+      </div>
+      <div id="diag" class="small muted">Ready.</div>
+    </details>
+  </div>
 
-    <h3>All Photos</h3>
-    <div id="all-photos"></div>
+  <main>
+    <!-- Auth -->
+    <div id="auth-box" class="card">
+      <h2>Login / Sign Up</h2>
+      <p class="small muted">Use your email + password. New users can sign up on the same form.</p>
+      <div class="row">
+        <input id="email" class="input" placeholder="Enter your email" style="max-width:260px"/>
+        <input id="password" class="input" placeholder="Enter your password" type="password" style="max-width:180px"/>
+        <button id="signup-btn" class="btn">Sign Up</button>
+        <button id="login-btn" class="btn">Log In</button>
+        <button id="logout-btn" class="btn right">Sign out</button>
+      </div>
+    </div>
 
-    <div id="rooms"></div>
-  </section>
-</main>
+    <!-- Project picker -->
+    <div id="project-box" class="card hidden">
+      <h2>Project</h2>
+      <div class="row">
+        <label class="small muted">Select a project</label>
+        <select id="project-select" style="max-width:360px"></select>
+        <label class="small muted"><input type="checkbox" id="show-archived-projects"/> Show archived</label>
+        <button id="use-selected" class="btn accent">Use Selected</button>
+        <button id="archive-toggle" class="btn">Archive / Unarchive</button>
+      </div>
+      <hr style="border:none;border-top:1px solid #eee;width:100%"/>
+      <div class="row">
+        <input id="project-name" class="input" placeholder="New project name" style="max-width:320px"/>
+        <input id="project-address" class="input" placeholder="Site address (optional)" style="max-width:420px"/>
+        <button id="create-project" class="btn">Create New Project</button>
+      </div>
+      <p class="small muted">Tip: next time just pick it from the list above.</p>
+    </div>
 
-<script>
-/* 1) Supabase setup */
-const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
-const ADMIN_UUID = "f3fb3703-9b24-4323-919e-0738f82cc93f";
+    <!-- Dashboard -->
+    <div id="dash" class="card hidden">
+      <h2>Project Dashboard</h2>
 
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
-});
+      <div class="row" style="width:100%">
+        <input id="search" class="input" placeholder="Filter by room or floor…" style="flex:1"/>
+        <label class="small muted"><input type="checkbox" id="show-archived-photos"/> Show archived photos</label>
+      </div>
 
-/* 2) DOM refs */
-const authBox = document.getElementById('auth-box');
-const projectBox = document.getElementById('project-box');
-const dash = document.getElementById('dash');
-const roomsEl = document.getElementById('rooms');
-const authStateEl = document.getElementById('auth-state');
-const emailInput = document.getElementById('email');
-const passwordInput = document.getElementById('password');
-const signupBtn = document.getElementById('signup-btn');
-const loginBtn = document.getElementById('login-btn');
-const logoutBtn = document.getElementById('logout-btn');
-const projectSelect = document.getElementById('project-select');
-const useProjectBtn = document.getElementById('use-project');
-const adminControls = document.getElementById('admin-controls');
-const archiveBtn = document.getElementById('archive-project');
-const unarchiveBtn = document.getElementById('unarchive-project');
-const allPhotosEl = document.getElementById('all-photos');
-const overallBar = document.getElementById('overall-bar');
-const overallPct = document.getElementById('overall-pct');
+      <div class="row" style="gap:1rem;align-items:center;margin:.6rem 0">
+        <strong>Overall Progress</strong>
+        <div class="progress" style="flex:1;max-width:540px"><span id="overall-bar" style="width:0%"></span></div>
+        <span id="overall-pct" class="small muted">0%</span>
+      </div>
 
-/* 3) State */
-let currentUser = null;
-let currentProject = null;
+      <details id="signoffs-block" class="card">
+        <summary><strong>All Sign-offs</strong></summary>
+        <div id="all-signoffs" class="body"></div>
+      </details>
 
-/* 4) Auth */
-signupBtn.onclick = async () => {
-  let { error } = await sb.auth.signUp({ email: emailInput.value, password: passwordInput.value });
-  if (error) alert("Signup error: " + error.message);
-};
-loginBtn.onclick = async () => {
-  let { error } = await sb.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
-  if (error) alert("Login error: " + error.message);
-};
-logoutBtn.onclick = async () => { await sb.auth.signOut(); location.reload(); };
+      <details id="photos-block" class="card">
+        <summary><strong>All Photos</strong></summary>
+        <div id="all-photos" class="thumbs"></div>
+      </details>
+    </div>
 
-sb.auth.onAuthStateChange((_event, session) => {
-  currentUser = session?.user || null;
-  if (currentUser) {
-    authStateEl.textContent = "Signed in: " + currentUser.email;
-    authBox.classList.add('hidden');
-    projectBox.classList.remove('hidden');
-    if (currentUser.id === ADMIN_UUID) adminControls.classList.remove('hidden');
-    loadProjects();
-  } else {
-    authStateEl.textContent = "Signed out";
-    authBox.classList.remove('hidden');
-    projectBox.classList.add('hidden');
-    dash.classList.add('hidden');
-  }
-});
+    <!-- Floors / Rooms / Tasks -->
+    <div id="rooms" class="grid"></div>
+  </main>
 
-/* 5) Load projects into dropdown */
-async function loadProjects() {
-  const { data } = await sb.from('projects').select('*').eq('archived', false);
-  projectSelect.innerHTML = "";
-  data.forEach(p => {
-    let opt = document.createElement('option');
-    opt.value = p.id;
-    opt.textContent = p.name;
-    projectSelect.appendChild(opt);
-  });
-}
-
-useProjectBtn.onclick = async () => {
-  currentProject = projectSelect.value;
-  dash.classList.remove('hidden');
-  loadRooms();
-  loadPhotos();
-};
-
-/* 6) Admin archive/unarchive */
-archiveBtn.onclick = async () => {
-  if (currentUser.id !== ADMIN_UUID) return;
-  await sb.from('projects').update({ archived: true }).eq('id', currentProject);
-  alert("Project archived");
-  loadProjects();
-};
-unarchiveBtn.onclick = async () => {
-  if (currentUser.id !== ADMIN_UUID) return;
-  await sb.from('projects').update({ archived: false }).eq('id', currentProject);
-  alert("Project unarchived");
-  loadProjects();
-};
-
-/* 7) Rooms + Tasks (basic placeholder) */
-async function loadRooms() {
-  roomsEl.innerHTML = "";
-  const { data } = await sb.from('rooms').select('*').eq('project_id', currentProject);
-  data.forEach(r => {
-    let div = document.createElement('div');
-    div.className = "card";
-    div.innerHTML = `<h4>${r.name}</h4>
-      <div class="progress"><div class="progress-bar" id="bar-${r.id}"></div></div>
-      <input placeholder="Notes">`;
-    roomsEl.appendChild(div);
-  });
-}
-
-/* 8) Photos with archive toggle */
-async function loadPhotos() {
-  allPhotosEl.innerHTML = "";
-  const { data } = await sb.from('photos').select('*').eq('project_id', currentProject).eq('archived', false);
-  data.forEach(ph => {
-    let img = document.createElement('img');
-    img.src = ph.url;
-    img.className = "photo-thumb";
-    allPhotosEl.appendChild(img);
-
-    if (currentUser.id === ADMIN_UUID) {
-      let btn = document.createElement('button');
-      btn.textContent = "Archive";
-      btn.onclick = async () => {
-        await sb.from('photos').update({ archived: true }).eq('id', ph.id);
-        loadPhotos();
-      };
-      allPhotosEl.appendChild(btn);
+  <script defer>
+  (async function () {
+    /* --------- 0) Kill any stale service worker (prevents frozen logins) --------- */
+    if ('serviceWorker' in navigator) {
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+        if (window.caches?.keys) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
+        }
+        console.log('[sw] Unregistered and caches cleared');
+        const diag = document.getElementById('diag'); if(diag) diag.textContent = '[fix] SW + caches cleared ✅';
+      } catch (e) {
+        console.warn('[sw] purge failed', e);
+      }
     }
-  });
-}
-</script>
+
+    /* --------- 1) Supabase client --------- */
+    const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+    });
+
+    /* --------- 2) DOM refs --------- */
+    const authBox = document.getElementById('auth-box');
+    const projectBox = document.getElementById('project-box');
+    const dash = document.getElementById('dash');
+    const roomsEl = document.getElementById('rooms');
+    const authStateEl = document.getElementById('auth-state');
+    const diagEl = document.getElementById('diag');
+    const diagRerunBtn = document.getElementById('diag-rerun');
+    const diagClearBtn = document.getElementById('diag-clear-sw');
+
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const signupBtn = document.getElementById('signup-btn');
+    const loginBtn = document.getElementById('login-btn');
+    const logoutBtn = document.getElementById('logout-btn');
+
+    const projectSelect = document.getElementById('project-select');
+    const showArchivedProjectsCb = document.getElementById('show-archived-projects');
+    const useSelectedBtn = document.getElementById('use-selected');
+    const archiveToggleBtn = document.getElementById('archive-toggle');
+
+    const projectNameInput = document.getElementById('project-name');
+    const projectAddressInput = document.getElementById('project-address');
+    const createProjectBtn = document.getElementById('create-project');
+
+    const searchInput = document.getElementById('search');
+    const allSignoffsEl = document.getElementById('all-signoffs');
+    const allPhotosEl = document.getElementById('all-photos');
+    const showArchivedPhotosCb = document.getElementById('show-archived-photos');
+    const overallBar = document.getElementById('overall-bar');
+    const overallPct = document.getElementById('overall-pct');
+
+    /* --------- 3) Helpers/State --------- */
+    const FLOOR_ORDER = ['Basement','Ground Floor','1st Floor','2nd Floor','Other','Garage','Roof'];
+    const safe = s => (s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    const by = k => (a,b)=> (a[k]||'').localeCompare(b[k]||'');
+
+    const TRADE_DEFS = [
+      { name:'Joinery', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+      { name:'Electrical', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+      { name:'Plumbing', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+      { name:'Plasterer', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+      { name:'Decorators', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+      { name:'Tiling', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+      { name:'Specialist', phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+    ];
+
+    let session=null, currentUser=null, currentProjectId=null;
+    let roomsCache=[], tasksCache=[];
+    let projectsCache=[];
+
+    function showAuth(){ authBox.classList.remove('hidden'); projectBox.classList.add('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
+    function showProject(){ authBox.classList.add('hidden'); projectBox.classList.remove('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
+    function showApp(){ authBox.classList.add('hidden'); projectBox.classList.add('hidden'); dash.classList.remove('hidden'); }
+
+    function logDiag(msg){ if(diagEl) diagEl.textContent = String(msg); }
+
+    /* --------- 4) Diagnostics buttons --------- */
+    diagRerunBtn?.addEventListener('click', async ()=>{
+      const out=[];
+      out.push('SW: none');
+      out.push('Network: reachable');
+      try{ const { data } = await sb.auth.getSession(); out.push('Auth: session OK'); }catch{ out.push('Auth: session FAIL'); }
+      try{ await sb.from('projects').select('id').limit(1); out.push('REST: reachable'); }catch{ out.push('REST: fail'); }
+      logDiag(out.join(' | '));
+    });
+    diagClearBtn?.addEventListener('click', async ()=>{
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+        const keys = await caches.keys();
+        await Promise.all(keys.map(k => caches.delete(k)));
+      }
+      logDiag('[fix] SW + caches cleared ✅');
+    });
+
+    /* --------- 5) Auth --------- */
+    signupBtn.addEventListener('click', async () => {
+      const email = (emailInput.value||'').trim();
+      const pw = passwordInput.value||'';
+      if(!email || !pw) return alert('Please enter email and password');
+      signupBtn.disabled = true;
+      try{
+        const { error } = await sb.auth.signUp({ email, password: pw });
+        if(error) throw error;
+        alert('Sign up OK. If confirmation is required, check your inbox.');
+      }catch(err){ alert('Sign up failed: ' + (err?.message||String(err))); }
+      finally{ signupBtn.disabled=false; }
+    });
+
+    loginBtn.addEventListener('click', async () => {
+      const email = (emailInput.value||'').trim();
+      const pw = passwordInput.value||'';
+      if(!email || !pw) return alert('Please enter email and password');
+      loginBtn.disabled = true;
+      try{
+        const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+        if(error) throw error;
+        // UI updates via onAuthStateChange
+      }catch(err){ alert('Login error: ' + (err?.message||String(err))); }
+      finally{ loginBtn.disabled=false; }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      try{ await sb.auth.signOut(); }catch(err){ alert('Sign out failed: '+(err?.message||String(err))); }
+    });
+
+    sb.auth.onAuthStateChange(async ()=>{
+      try {
+        const { data } = await sb.auth.getSession();
+        session = data.session;
+        currentUser = session?.user || null;
+        authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email||currentUser.id}` : 'Signed out';
+        if(currentUser){ showProject(); await loadProjects(); }
+        else showAuth();
+      } catch(e){ console.warn(e); }
+    });
+
+    // initial
+    try{
+      const { data } = await sb.auth.getSession();
+      session = data.session;
+      currentUser = session?.user || null;
+      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email||currentUser.id}` : 'Signed out';
+      if(currentUser){ showProject(); await loadProjects(); }
+      else showAuth();
+    }catch{ showAuth(); }
+
+    /* --------- 6) Projects dropdown + create + archive toggle --------- */
+    async function loadProjects(){
+      const includeArchived = !!showArchivedProjectsCb.checked;
+      const { data, error } = await sb
+        .from('projects')
+        .select('id,name,is_archived,site_address')
+        .eq('user_id', currentUser.id)
+        .order('created_at',{ascending:false});
+      if(error){ alert(error.message); return; }
+      projectsCache = (data||[]).filter(p => includeArchived ? true : !p.is_archived);
+      projectSelect.innerHTML = projectsCache.length
+        ? projectsCache.map(p=>`<option value="${p.id}">${safe(p.name)}${p.is_archived?' (archived)':''}</option>`).join('')
+        : `<option value="">No projects yet</option>`;
+    }
+
+    showArchivedProjectsCb.addEventListener('change', loadProjects);
+
+    useSelectedBtn.addEventListener('click', async ()=>{
+      const pid = projectSelect.value;
+      if(!pid) return alert('Pick a project first.');
+      currentProjectId = pid;
+      await renderFloors(currentProjectId);
+      await renderAllPhotos(currentProjectId);
+      await renderSignoffs(currentProjectId);
+      refreshProgressUI();
+      showApp();
+    });
+
+    archiveToggleBtn.addEventListener('click', async ()=>{
+      const pid = projectSelect.value;
+      if(!pid) return alert('Pick a project first.');
+      const proj = projectsCache.find(p=>p.id===pid); if(!proj) return;
+      const { error } = await sb.from('projects').update({ is_archived: !proj.is_archived }).eq('id', pid);
+      if(error) return alert(error.message);
+      await loadProjects();
+      alert(proj.is_archived ? 'Unarchived' : 'Archived');
+    });
+
+    createProjectBtn.addEventListener('click', async ()=>{
+      const name = (projectNameInput.value||'').trim();
+      const addr = (projectAddressInput.value||'').trim();
+      if(!currentUser) return alert('Please sign in first.');
+      if(!name) return alert('Enter a project name');
+      createProjectBtn.disabled = true;
+      try{
+        // Reuse if exists for this user
+        const { data: existing, error: findErr } = await sb
+          .from('projects').select('id').eq('user_id', currentUser.id).eq('name', name).limit(1);
+        if(findErr) throw findErr;
+
+        if(existing && existing.length){
+          currentProjectId = existing[0].id;
+        }else{
+          const { data: ins, error: insErr } = await sb
+            .from('projects').insert({ name, site_address: addr, user_id: currentUser.id }).select('id').single();
+          if(insErr) throw insErr;
+          currentProjectId = ins.id;
+        }
+        await loadProjects();
+        projectSelect.value = currentProjectId;
+        await renderFloors(currentProjectId);
+        await renderAllPhotos(currentProjectId);
+        await renderSignoffs(currentProjectId);
+        showApp();
+      }catch(err){ alert(err?.message||String(err)); }
+      finally{ createProjectBtn.disabled=false; }
+    });
+
+    /* --------- 7) Data rendering --------- */
+
+    async function renderFloors(pid){
+      roomsEl.innerHTML = '<div class="muted">Loading…</div>';
+
+      const { data: rooms, error: roomsErr } = await sb
+        .from('rooms')
+        .select('id,floor_name,room_name')
+        .eq('project_id', pid)
+        .order('floor_name');
+      if(roomsErr){ roomsEl.innerHTML = '<div class="muted">Could not load rooms.</div>'; return; }
+      roomsCache = rooms.slice();
+
+      // tasks (we don’t rely on project_id column; we join by room_id)
+      const roomIds = rooms.map(r => r.id);
+      const { data: tasks } = await sb
+        .from('tasks')
+        .select('id,room_id,trade,phase,description,done,notes,updated_at');
+      tasksCache = (tasks||[])
+        .filter(t => roomIds.includes(t.room_id))
+        .map(t => ({ ...t, done: !!t.done }));
+
+      // group rooms by floor
+      const floors = {};
+      for (const r of rooms) {
+        const key = r.floor_name || 'Other';
+        (floors[key] ||= []).push(r);
+      }
+
+      // order floors
+      const ordered = Object.keys(floors).sort((a,b)=>{
+        const ia=FLOOR_ORDER.indexOf(a), ib=FLOOR_ORDER.indexOf(b);
+        if(ia>-1 && ib>-1) return ia-ib;
+        if(ia>-1) return -1; if(ib>-1) return 1;
+        return a.localeCompare(b);
+      });
+
+      // build
+      const out=[];
+      for(const fname of ordered){
+        const fRooms = floors[fname].sort(by('room_name'));
+        const fTasks = tasksCache.filter(t => fRooms.some(r => r.id===t.room_id));
+        const total = fTasks.length || 1;
+        const done = fTasks.filter(t=>t.done).length;
+        const pct = Math.round(100*done/total);
+        out.push(`
+          <details class="card" data-floor="${safe(fname)}">
+            <summary class="row" style="gap:1rem;align-items:center">
+              <strong>${safe(fname)}</strong>
+              <span class="small muted">${done}/${total}</span>
+              <div class="progress" style="flex:1;max-width:380px"><span style="width:${pct}%"></span></div>
+              <span class="small muted">${pct}%</span>
+            </summary>
+            <div class="body">
+              ${fRooms.map(r => roomBlock(r)).join('')}
+            </div>
+          </details>
+        `);
+      }
+
+      roomsEl.innerHTML = out.join('');
+      attachRoomHandlers();
+      refreshProgressUI();
+    }
+
+    function roomBlock(r){
+      // single section per trade, with our standard phases as checkboxes
+      const tradeSections = TRADE_DEFS.map(td=>{
+        const existing = (tasksCache||[]).filter(t=> t.room_id===r.id && t.trade===td.name);
+        // produce consistent 6 lines
+        const lines = td.phases.map(ph=>{
+          const t = existing.find(x=> (x.phase||'')===ph) || { id:null, done:false, description:ph };
+          return `
+            <label class="row" style="gap:.5rem;margin:.25rem 0">
+              <input type="checkbox" data-room="${r.id}" data-trade="${td.name}" data-phase="${safe(ph)}" ${t.done?'checked':''}/>
+              <span>${safe(ph)}</span>
+            </label>
+          `;
+        }).join('');
+        return `
+          <div class="task trade-${td.name}">
+            <div class="row" style="justify-content:space-between">
+              <span class="chip trade">${td.name}</span>
+            </div>
+            <div style="margin:.5rem 0">${lines}</div>
+            <div style="margin-top:.5rem">
+              <label class="small muted">Notes</label>
+              <textarea class="note" data-note-for="${r.id}:${td.name}" placeholder="Add notes…"></textarea>
+            </div>
+            <div class="row" style="margin-top:.5rem">
+              <input type="file" accept="image/*" data-upload-for="${r.id}:${td.name}"/>
+              <button class="btn signoff-btn"
+                      data-room-id="${r.id}"
+                      data-task-id=""
+                      data-trade="${td.name}"
+                      data-phase="">Sign off</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+      return `
+        <details class="card" data-room="${r.id}">
+          <summary class="row" style="gap:1rem;align-items:center">
+            <strong>${safe(r.room_name)}</strong>
+            <span class="small muted">—</span>
+            <div class="progress" style="flex:1;max-width:300px"><span style="width:0%"></span></div>
+            <span class="small muted">0%</span>
+          </summary>
+          <div class="body" data-room-body="${r.id}">
+            ${tradeSections}
+          </div>
+        </details>
+      `;
+    }
+
+    function refreshProgressUI(){
+      // per-room
+      roomsEl.querySelectorAll('details[data-room]').forEach(roomWrap=>{
+        const roomId = roomWrap.getAttribute('data-room');
+        const rTasks = tasksCache.filter(t=>t.room_id===roomId);
+        const total = rTasks.length || 1;
+        const done = rTasks.filter(t=>t.done).length;
+        const pct = Math.round(100*done/total);
+        const summary = roomWrap.querySelector('summary');
+        if(summary){
+          summary.querySelector('.progress > span').style.width = pct+'%';
+          const spans = summary.querySelectorAll('.small.muted');
+          if(spans[0]) spans[0].textContent = `${done}/${total}`;
+          if(spans[1]) spans[1].textContent = `${pct}%`;
+        }
+      });
+
+      // per-floor
+      roomsEl.querySelectorAll('details[data-floor]').forEach(fWrap=>{
+        const roomIds = Array.from(fWrap.querySelectorAll('details[data-room]')).map(x=>x.getAttribute('data-room'));
+        const fTasks = tasksCache.filter(t=> roomIds.includes(String(t.room_id)));
+        const total = fTasks.length || 1;
+        const done = fTasks.filter(t=>t.done).length;
+        const pct = Math.round(100*done/total);
+        const summary = fWrap.querySelector('summary');
+        if(summary){
+          summary.querySelector('.progress > span').style.width = pct+'%';
+          const spans = summary.querySelectorAll('.small.muted');
+          if(spans[0]) spans[0].textContent = `${done}/${total}`;
+          if(spans[1]) spans[1].textContent = `${pct}%`;
+        }
+      });
+
+      // overall
+      const allTotal = tasksCache.length || 1;
+      const allDone = tasksCache.filter(t=>t.done).length;
+      const pct = Math.round(100*allDone/allTotal);
+      overallBar.style.width = pct + '%';
+      overallPct.textContent = pct + '%';
+    }
+
+    function attachRoomHandlers(){
+      // toggle done for generated checkboxes
+      roomsEl.querySelectorAll('input[type="checkbox"][data-room][data-trade][data-phase]').forEach(cb=>{
+        cb.addEventListener('change', async (e)=>{
+          const room_id = e.target.getAttribute('data-room');
+          const trade = e.target.getAttribute('data-trade');
+          const phase = e.target.getAttribute('data-phase');
+          const done = e.target.checked;
+
+          // upsert task
+          const existing = tasksCache.find(t=> t.room_id===room_id && t.trade===trade && (t.phase||'')===phase);
+          if(existing){
+            const { error } = await sb.from('tasks').update({ done, updated_at: new Date().toISOString() }).eq('id', existing.id);
+            if(error){ alert(error.message); e.target.checked = !done; return; }
+            existing.done = done;
+          }else{
+            const { data, error } = await sb.from('tasks')
+              .insert({ room_id, trade, phase, description: phase, done })
+              .select('id')
+              .single();
+            if(error){ alert(error.message); e.target.checked = !done; return; }
+            tasksCache.push({ id:data.id, room_id, trade, phase, description: phase, done });
+          }
+          refreshProgressUI();
+        });
+      });
+
+      // notes (per room+trade)
+      roomsEl.querySelectorAll('textarea[data-note-for]').forEach(ta=>{
+        const timers = new Map();
+        ta.addEventListener('input', ()=>{
+          const key = ta.getAttribute('data-note-for'); // "roomId:Trade"
+          clearTimeout(timers.get(key));
+          timers.set(key, setTimeout(async ()=>{
+            const [room_id, trade] = key.split(':');
+            // store single note row on the first phase line (Measure & survey)
+            const phase = 'Measure & survey';
+            const existing = tasksCache.find(t=> t.room_id===room_id && t.trade===trade && (t.phase||'')===phase);
+            if(existing){
+              const { error } = await sb.from('tasks').update({ notes: ta.value, updated_at:new Date().toISOString() }).eq('id', existing.id);
+              if(error) alert(error.message);
+            }else{
+              const { data, error } = await sb.from('tasks')
+                .insert({ room_id, trade, phase, description: phase, notes: ta.value })
+                .select('id').single();
+              if(error) alert(error.message);
+              else tasksCache.push({ id:data.id, room_id, trade, phase, description: phase, done:false, notes: ta.value });
+            }
+          }, 600));
+        });
+      });
+
+      // uploads (allow camera or gallery)
+      roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp=>{
+        inp.addEventListener('change', async ()=>{
+          const file = inp.files?.[0]; if(!file) return;
+          const [room_id, trade] = (inp.getAttribute('data-upload-for')||'').split(':');
+          const path = `${currentProjectId}/${room_id}/${trade}/${Date.now()}_${file.name}`;
+          const { error: upErr } = await sb.storage.from('photos').upload(path, file, { cacheControl: '3600', upsert:false });
+          if(upErr) return alert(upErr.message);
+          await sb.from('photos').insert({ project_id: currentProjectId, room_id, trade, phase: null, path, uploaded_by: currentUser?.email||'' });
+          await renderAllPhotos(currentProjectId);
+        });
+      });
+
+      // sign-off button -> record a signoff row (optional)
+      roomsEl.querySelectorAll('.signoff-btn').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          if(!currentProjectId || !session?.user) return alert('Please sign in and choose a project first.');
+          const room_id = btn.dataset.roomId, trade = btn.dataset.trade||null, phase = btn.dataset.phase||null;
+          const whoId = session.user.id, whoName = session.user.email || session.user.user_metadata?.full_name || 'unknown';
+          const { error } = await sb.from('signoffs').insert({
+            project_id: currentProjectId, room_id, task_id: null, trade, phase, signed_by: whoId, signed_by_name: whoName
+          });
+          if(error) return alert(error.message);
+          btn.textContent = 'Signed'; btn.disabled = true;
+          await renderSignoffs(currentProjectId);
+        });
+      });
+    }
+
+    /* --------- 8) Dashboard lists --------- */
+    async function renderSignoffs(pid){
+      const { data: s, error } = await sb
+        .from('signoffs')
+        .select('id,created_at,trade,phase,signed_by_name,rooms!inner(room_name)')
+        .eq('project_id', pid).order('created_at', { ascending:false }).limit(200);
+      if(error){ allSignoffsEl.innerHTML = '<div class="muted">Error loading sign-offs</div>'; return; }
+      allSignoffsEl.innerHTML = (s||[]).map(x=>`
+        <div class="row" style="gap:.6rem;padding:.25rem 0;border-bottom:1px dashed #eef2f4">
+          <span class="chip">${safe(x.rooms?.room_name || 'Room')}</span>
+          <span class="chip">${safe(x.trade || '')}</span>
+          <span class="chip">${safe(x.phase || '')}</span>
+          <span class="small muted">by ${safe(x.signed_by_name || '')}</span>
+          <span class="small muted">${new Date(x.created_at).toLocaleString()}</span>
+        </div>
+      `).join('');
+    }
+
+    async function renderAllPhotos(pid){
+      const includeArchived = !!showArchivedPhotosCb.checked;
+      const { data: ph, error } = await sb
+        .from('photos')
+        .select('id,path,uploaded_by,created_at,is_archived')
+        .eq('project_id', pid)
+        .order('created_at', { ascending:false })
+        .limit(300);
+      if(error){ allPhotosEl.innerHTML = '<div class="muted">Error loading photos</div>'; return; }
+      const list = (ph||[]).filter(p => includeArchived ? true : !p.is_archived);
+
+      allPhotosEl.innerHTML = '';
+      for (const p of list) {
+        const { data: pub } = sb.storage.from('photos').getPublicUrl(p.path);
+        const wrap = document.createElement('div');
+        wrap.className = 'thumb';
+        const img = new Image();
+        img.src = pub.publicUrl;
+        img.alt = p.path.split('/').pop();
+        img.title = `${p.uploaded_by || ''}\n${new Date(p.created_at).toLocaleString()}`;
+        img.addEventListener('click', () => window.open(pub.publicUrl, '_blank'));
+        const actions = document.createElement('div');
+        actions.className = 'thumb-actions';
+        const btnA = document.createElement('button');
+        btnA.className = 'smallbtn';
+        btnA.textContent = p.is_archived ? 'Unarchive' : 'Archive';
+        btnA.addEventListener('click', async (e)=>{
+          e.stopPropagation();
+          const { error: upErr } = await sb.from('photos').update({ is_archived: !p.is_archived }).eq('id', p.id);
+          if(upErr) return alert(upErr.message);
+          await renderAllPhotos(pid);
+        });
+        actions.appendChild(btnA);
+        wrap.appendChild(img);
+        wrap.appendChild(actions);
+        allPhotosEl.appendChild(wrap);
+      }
+    }
+
+    showArchivedPhotosCb.addEventListener('change', ()=> renderAllPhotos(currentProjectId));
+
+    /* --------- 9) Search (room/floor) --------- */
+    searchInput.addEventListener('input', ()=>{
+      const q = (searchInput.value||'').toLowerCase();
+      if(!q){ document.querySelectorAll('details[data-floor]').forEach(d=> d.open=false); }
+      roomsEl.querySelectorAll('details[data-floor]').forEach(f=>{
+        let hit=false;
+        f.querySelectorAll('details[data-room]').forEach(r=>{
+          const name = r.querySelector('summary strong')?.textContent.toLowerCase()||'';
+          const matches = name.includes(q) || (f.getAttribute('data-floor')||'').toLowerCase().includes(q);
+          r.style.display = matches? '' : 'none';
+          if(matches) hit=true;
+        });
+        f.style.display = hit? '' : 'none';
+        f.open = hit && q.length>0;
+      });
+    });
+
+  })();
+  </script>
 </body>
 </html>
