@@ -1,116 +1,202 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>MPJ Tracker</title>
 
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    body { font-family: system-ui, sans-serif; margin:0; background:#f5f5f5; }
-    header { display:flex; justify-content:space-between; align-items:center; padding:0.75rem 1rem; background:#0b5f3b; color:#fff; }
-    .card { background:#fff; padding:1rem; margin:1rem; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); }
-    .progress { height:8px; background:#ddd; border-radius:4px; overflow:hidden; }
-    .progress span { display:block; height:100%; background:#0b5f3b; }
-    .chip { display:inline-block; padding:2px 8px; border-radius:12px; font-size:0.8rem; background:#eee; margin-right:4px; }
-    .muted { color:#777; font-size:0.85rem; }
-    #diag-wrap { position:fixed; bottom:10px; left:10px; background:#fff; border:1px solid #ccc; padding:0.5rem; border-radius:6px; max-width:320px; }
-    #diag { white-space:pre-wrap; font-family:monospace; font-size:0.8rem; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+    header { background: #0b5f3b; color: #fff; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
+    header img { height: 30px; margin-right: 10px; }
+    .card { background: #f9f9f9; border: 1px solid #ddd; margin: 10px; padding: 10px; border-radius: 6px; }
+    .progress { height: 12px; background: #ddd; border-radius: 6px; margin: 5px 0; overflow: hidden; }
+    .progress-bar { height: 100%; background: #0b5f3b; width: 0%; transition: width 0.3s; }
+    .photo-thumb { width: 100px; margin: 5px; border: 1px solid #ccc; border-radius: 4px; }
+    .hidden { display: none; }
+    details { margin: 5px; }
+    .admin-only { color: red; font-weight: bold; }
   </style>
 </head>
 <body>
-  <header>
-    <div><strong>MPJ Tracker</strong></div>
-    <div id="auth-state">Signed out</div>
-  </header>
 
-  <!-- Diagnostics dropdown -->
-  <details id="diag-wrap">
+<header>
+  <div class="brand">
+    <img src="mpj-logo.png" alt="logo"><strong>MPJ Tracker</strong>
+  </div>
+  <div id="auth-state">Signed out</div>
+</header>
+
+<main>
+  <!-- Diagnostics hidden -->
+  <details>
     <summary><strong>Diagnostics</strong> (click to open/close)</summary>
-    <div id="diag">Ready</div>
+    <div id="diag">Ready…</div>
   </details>
 
-  <!-- Login -->
-  <div id="auth-box" class="card">
-    <h3>Login / Sign Up</h3>
-    <input id="email" type="email" placeholder="Email"/><br/><br/>
-    <input id="password" type="password" placeholder="Password"/><br/><br/>
+  <!-- Auth -->
+  <section id="auth-box">
+    <input id="email" placeholder="Email">
+    <input id="password" type="password" placeholder="Password">
     <button id="signup-btn">Sign Up</button>
     <button id="login-btn">Log In</button>
-    <button id="logout-btn">Sign out</button>
-  </div>
+    <button id="logout-btn" class="hidden">Log Out</button>
+  </section>
+
+  <!-- Project controls -->
+  <section id="project-box" class="hidden">
+    <select id="project-select"></select>
+    <button id="use-project">Load Project</button>
+    <div id="admin-controls" class="hidden admin-only">
+      <button id="archive-project">Archive Project</button>
+      <button id="unarchive-project">Unarchive Project</button>
+    </div>
+  </section>
 
   <!-- Dashboard -->
-  <div id="dash" class="card" style="display:none">
-    <h3>Project Dashboard</h3>
-    <input id="project-name" placeholder="Project name"/>
-    <button id="use-project">Use Project</button>
-    <div id="overall">
-      <h4>Overall Progress</h4>
-      <div class="progress"><span id="overall-bar" style="width:0%"></span></div>
-      <span id="overall-pct">0%</span>
-    </div>
-    <h4>All Photos</h4>
-    <div id="all-photos">No photos yet</div>
+  <section id="dash" class="hidden">
+    <h2>Project Dashboard</h2>
+    <div>Overall Progress <div class="progress"><div id="overall-bar" class="progress-bar"></div></div><span id="overall-pct">0%</span></div>
+
+    <h3>All Photos</h3>
+    <div id="all-photos"></div>
+
     <div id="rooms"></div>
-  </div>
+  </section>
+</main>
 
 <script>
-/* ---- Supabase ---- */
-const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
+/* 1) Supabase setup */
+const SUPABASE_URL = "https://zpnqruthpknncpiztxf.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...";
+const ADMIN_UUID = "f3fb3703-9b24-4323-919e-0738f82cc93f";
+
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
 });
 
-/* ---- DOM ---- */
-const authBox = document.getElementById("auth-box");
-const dash = document.getElementById("dash");
-const authStateEl = document.getElementById("auth-state");
-const emailInput = document.getElementById("email");
-const passwordInput = document.getElementById("password");
-const signupBtn = document.getElementById("signup-btn");
-const loginBtn = document.getElementById("login-btn");
-const logoutBtn = document.getElementById("logout-btn");
-const diag = document.getElementById("diag");
+/* 2) DOM refs */
+const authBox = document.getElementById('auth-box');
+const projectBox = document.getElementById('project-box');
+const dash = document.getElementById('dash');
+const roomsEl = document.getElementById('rooms');
+const authStateEl = document.getElementById('auth-state');
+const emailInput = document.getElementById('email');
+const passwordInput = document.getElementById('password');
+const signupBtn = document.getElementById('signup-btn');
+const loginBtn = document.getElementById('login-btn');
+const logoutBtn = document.getElementById('logout-btn');
+const projectSelect = document.getElementById('project-select');
+const useProjectBtn = document.getElementById('use-project');
+const adminControls = document.getElementById('admin-controls');
+const archiveBtn = document.getElementById('archive-project');
+const unarchiveBtn = document.getElementById('unarchive-project');
+const allPhotosEl = document.getElementById('all-photos');
+const overallBar = document.getElementById('overall-bar');
+const overallPct = document.getElementById('overall-pct');
 
-/* ---- Auth ---- */
-async function handleAuth(email, password, isSignup) {
-  try {
-    let result;
-    if (isSignup) {
-      result = await sb.auth.signUp({ email, password });
-      if (result.error && result.error.message.includes("already registered")) {
-        result = await sb.auth.signInWithPassword({ email, password });
-      }
-    } else {
-      result = await sb.auth.signInWithPassword({ email, password });
-    }
-    if (result.error) throw result.error;
-    authStateEl.textContent = "Signed in: " + email;
-    authBox.style.display = "none";
-    dash.style.display = "block";
-    diag.textContent = "Login success";
-  } catch (err) {
-    diag.textContent = "Login error: " + err.message;
-    alert("Login error: " + err.message);
+/* 3) State */
+let currentUser = null;
+let currentProject = null;
+
+/* 4) Auth */
+signupBtn.onclick = async () => {
+  let { error } = await sb.auth.signUp({ email: emailInput.value, password: passwordInput.value });
+  if (error) alert("Signup error: " + error.message);
+};
+loginBtn.onclick = async () => {
+  let { error } = await sb.auth.signInWithPassword({ email: emailInput.value, password: passwordInput.value });
+  if (error) alert("Login error: " + error.message);
+};
+logoutBtn.onclick = async () => { await sb.auth.signOut(); location.reload(); };
+
+sb.auth.onAuthStateChange((_event, session) => {
+  currentUser = session?.user || null;
+  if (currentUser) {
+    authStateEl.textContent = "Signed in: " + currentUser.email;
+    authBox.classList.add('hidden');
+    projectBox.classList.remove('hidden');
+    if (currentUser.id === ADMIN_UUID) adminControls.classList.remove('hidden');
+    loadProjects();
+  } else {
+    authStateEl.textContent = "Signed out";
+    authBox.classList.remove('hidden');
+    projectBox.classList.add('hidden');
+    dash.classList.add('hidden');
   }
+});
+
+/* 5) Load projects into dropdown */
+async function loadProjects() {
+  const { data } = await sb.from('projects').select('*').eq('archived', false);
+  projectSelect.innerHTML = "";
+  data.forEach(p => {
+    let opt = document.createElement('option');
+    opt.value = p.id;
+    opt.textContent = p.name;
+    projectSelect.appendChild(opt);
+  });
 }
 
-signupBtn.onclick = ()=>handleAuth(emailInput.value,passwordInput.value,true);
-loginBtn.onclick = ()=>handleAuth(emailInput.value,passwordInput.value,false);
-logoutBtn.onclick = async ()=>{
-  await sb.auth.signOut();
-  authBox.style.display="block"; dash.style.display="none";
-  authStateEl.textContent="Signed out";
+useProjectBtn.onclick = async () => {
+  currentProject = projectSelect.value;
+  dash.classList.remove('hidden');
+  loadRooms();
+  loadPhotos();
 };
 
-/* ---- Placeholder Dashboard logic ---- */
-document.getElementById("use-project").onclick = ()=>{
-  alert("Project selected: " + document.getElementById("project-name").value);
+/* 6) Admin archive/unarchive */
+archiveBtn.onclick = async () => {
+  if (currentUser.id !== ADMIN_UUID) return;
+  await sb.from('projects').update({ archived: true }).eq('id', currentProject);
+  alert("Project archived");
+  loadProjects();
 };
+unarchiveBtn.onclick = async () => {
+  if (currentUser.id !== ADMIN_UUID) return;
+  await sb.from('projects').update({ archived: false }).eq('id', currentProject);
+  alert("Project unarchived");
+  loadProjects();
+};
+
+/* 7) Rooms + Tasks (basic placeholder) */
+async function loadRooms() {
+  roomsEl.innerHTML = "";
+  const { data } = await sb.from('rooms').select('*').eq('project_id', currentProject);
+  data.forEach(r => {
+    let div = document.createElement('div');
+    div.className = "card";
+    div.innerHTML = `<h4>${r.name}</h4>
+      <div class="progress"><div class="progress-bar" id="bar-${r.id}"></div></div>
+      <input placeholder="Notes">`;
+    roomsEl.appendChild(div);
+  });
+}
+
+/* 8) Photos with archive toggle */
+async function loadPhotos() {
+  allPhotosEl.innerHTML = "";
+  const { data } = await sb.from('photos').select('*').eq('project_id', currentProject).eq('archived', false);
+  data.forEach(ph => {
+    let img = document.createElement('img');
+    img.src = ph.url;
+    img.className = "photo-thumb";
+    allPhotosEl.appendChild(img);
+
+    if (currentUser.id === ADMIN_UUID) {
+      let btn = document.createElement('button');
+      btn.textContent = "Archive";
+      btn.onclick = async () => {
+        await sb.from('photos').update({ archived: true }).eq('id', ph.id);
+        loadPhotos();
+      };
+      allPhotosEl.appendChild(btn);
+    }
+  });
+}
 </script>
 </body>
 </html>
