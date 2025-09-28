@@ -5,13 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>MPJ Tracker</title>
 
-  <!-- Brand -->
   <meta name="theme-color" content="#0b5f3b"/>
   <link rel="icon" href="/favicon.ico"/>
   <link rel="icon" type="image/png" sizes="192x192" href="/mpj-logo.png"/>
   <link rel="apple-touch-icon" href="/apple-touch-icon.png"/>
 
-  <!-- Supabase v2 -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -52,7 +50,6 @@
     .task{border:1px dashed #e5e7eb;border-radius:12px;padding:.75rem;margin:.6rem 0}
     .note{width:100%;min-height:70px;border-radius:10px;border:1px solid #e5e7eb;padding:.6rem}
     .hidden{display:none}
-    /* trade chips */
     .trade-Joinery .chip.trade{background:var(--joinery);color:#fff}
     .trade-Plumbing .chip.trade{background:var(--plumbing);color:#fff}
     .trade-Electrical .chip.trade{background:var(--electrical);color:#fff}
@@ -60,7 +57,6 @@
     .trade-Decorators .chip.trade{background:var(--decorators);color:#fff}
     .trade-Tiling .chip.trade{background:var(--tiling);color:#000}
     .trade-Specialist .chip.trade{background:var(--special);color:#000}
-    /* diagnostics */
     #diag-wrap{position:fixed;right:12px;bottom:12px;max-width:420px;z-index:20}
     #diag-wrap summary{cursor:pointer}
     #diag{white-space:pre-wrap;font-family:ui-monospace,Consolas,monospace}
@@ -76,7 +72,6 @@
     </div>
   </header>
 
-  <!-- Diagnostics -->
   <div id="diag-wrap">
     <details class="card" open>
       <summary><strong>Diagnostics</strong> (click to open/close)</summary>
@@ -90,7 +85,6 @@
   </div>
 
   <main>
-    <!-- Auth -->
     <div id="auth-box" class="card">
       <h2>Login / Sign Up</h2>
       <p class="small muted">Use your email + password. New users can sign up on the same form.</p>
@@ -103,7 +97,6 @@
       </div>
     </div>
 
-    <!-- Project picker -->
     <div id="project-box" class="card hidden">
       <h2>Project</h2>
       <div class="row" style="flex-wrap:wrap">
@@ -124,7 +117,6 @@
       </div>
     </div>
 
-    <!-- Dashboard -->
     <div id="dash" class="card hidden">
       <h2>Project Dashboard</h2>
       <input id="search" class="input" placeholder="Filter by room or floor…"/>
@@ -150,17 +142,16 @@
       </details>
     </div>
 
-    <!-- Floors / Rooms / Tasks -->
     <div id="rooms" class="grid"></div>
   </main>
 
   <script>
   (async function () {
-    /* ---------- Diagnostics helper FIRST (fixes init order) ---------- */
+    // ---------- Diagnostics FIRST ----------
     const diagEl = document.getElementById('diag');
-    function diagLog(msg){ if(diagEl) diagEl.textContent = String(msg); console.log('[diag]', msg); }
+    const diagLog = (m)=>{ if(diagEl) diagEl.textContent=String(m); console.log('[diag]',m); };
 
-    /* ---------- 0) Prevent stale SW caching ---------- */
+    // ---------- SW purge ----------
     async function purgeServiceWorkers(){
       try{
         if('serviceWorker' in navigator){
@@ -173,25 +164,22 @@
         }
         console.log('[sw] Unregistered and caches cleared');
         diagLog('SW: none');
-      }catch(e){
-        console.warn('[sw] purge failed', e);
-        diagLog('SW purge failed: '+(e?.message||e));
-      }
+      }catch(e){ console.warn('[sw] purge failed',e); diagLog('SW purge failed: '+(e?.message||e)); }
     }
     await purgeServiceWorkers();
     document.getElementById('purge-sw')?.addEventListener('click', purgeServiceWorkers);
 
-    /* ---------- 1) Supabase client (your live project) ---------- */
-    const SUPABASE_URL = "https://zpnqruthpknncpiztxf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaXp0eGYiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc1ODQ2Mzg3NCwiZXhwIjoyMDc0MDM5ODc0fQ.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
-    const OWNER_UUID = "5728601a-4cfa-4a1a-bd0c-f6caea3ae3e8"; // only you can hard-delete projects
+    // ---------- Supabase client ----------
+    const SUPABASE_URL = ("https://zpnqruthpknncpiztxf.supabase.co").trim();
+    const SUPABASE_ANON_KEY = ("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaXp0eGYiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc1ODQ2Mzg3NCwiZXhwIjoyMDc0MDM5ODc0fQ.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4").trim();
+    const OWNER_UUID = "5728601a-4cfa-4a1a-bd0c-f6caea3ae3e8";
 
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
+      auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
     });
     console.log('Supabase client ready');
 
-    /* ---------- 2) DOM refs ---------- */
+    // ---------- Elements ----------
     const authBox = document.getElementById('auth-box');
     const projectBox = document.getElementById('project-box');
     const dash = document.getElementById('dash');
@@ -223,527 +211,378 @@
     const clearArchBtn = document.getElementById('clear-arch');
     const homeBtn = document.getElementById('home-btn');
 
-    /* ---------- 3) Helpers/State ---------- */
-    const FLOOR_ORDER = ['Basement','Ground Floor','1st Floor','2nd Floor','Other','Garage','Roof'];
-    const safe = s => (s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
-    const by = k => (a,b)=> (a[k]||'').localeCompare(b[k]||'');
+    const FLOOR_ORDER=['Basement','Ground Floor','1st Floor','2nd Floor','Other','Garage','Roof'];
+    const safe=s=>(s||'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+    const by=k=>(a,b)=>(a[k]||'').localeCompare(b[k]||'');
 
-    // Single section per trade with fixed checklist
-    const TRADE_DEFS = [
-      { name:'Joinery' , phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
-      { name:'Electrical' , phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
-      { name:'Plumbing' , phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
-      { name:'Plasterer' , phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
-      { name:'Decorators' , phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
-      { name:'Tiling' , phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
-      { name:'Specialist' , phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off'] },
+    const TRADE_DEFS=[
+      {name:'Joinery',phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off']},
+      {name:'Electrical',phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off']},
+      {name:'Plumbing',phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off']},
+      {name:'Plasterer',phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off']},
+      {name:'Decorators',phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off']},
+      {name:'Tiling',phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off']},
+      {name:'Specialist',phases:['Measure & survey','First fix','Second fix','Seal & clean','Snagging','Sign off']},
     ];
 
-    let session=null, currentUser=null, currentProjectId=null;
-    let roomsCache=[], tasksCache=[];
+    let session=null,currentUser=null,currentProjectId=null;
+    let roomsCache=[],tasksCache=[];
 
-    function showAuth(){ authBox.classList.remove('hidden'); projectBox.classList.add('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
-    function showProject(){ authBox.classList.add('hidden'); projectBox.classList.remove('hidden'); dash.classList.add('hidden'); roomsEl.innerHTML=''; }
-    function showApp(){ authBox.classList.add('hidden'); projectBox.classList.add('hidden'); dash.classList.remove('hidden'); }
+    const showAuth=()=>{authBox.classList.remove('hidden');projectBox.classList.add('hidden');dash.classList.add('hidden');roomsEl.innerHTML='';};
+    const showProject=()=>{authBox.classList.add('hidden');projectBox.classList.remove('hidden');dash.classList.add('hidden');roomsEl.innerHTML='';};
+    const showApp=()=>{authBox.classList.add('hidden');projectBox.classList.add('hidden');dash.classList.remove('hidden');};
 
-    /* ---------- Diagnostics quick test ---------- */
-    async function runDiagnostics(){
+    // ----- PROBE AUTH CONNECTIVITY -----
+    async function probeAuth(){
       try{
-        const sw = ('serviceWorker' in navigator) ? 'present' : 'none';
-        const { data } = await sb.auth.getSession();
-        diagLog(`SW: ${sw} | Auth session: ${data?.session ? 'OK' : 'none'}`);
-      }catch(e){ diagLog('Error: '+(e?.message||e)); }
+        const r = await fetch(`${SUPABASE_URL}/auth/v1/settings`,{
+          method:'GET',
+          headers:{ apikey: SUPABASE_ANON_KEY }
+        });
+        if(!r.ok){
+          const txt = await r.text().catch(()=>String(r.status));
+          const msg = `Auth probe HTTP ${r.status}: ${txt}`;
+          diagLog(msg);
+          return { ok:false, reason: msg };
+        }
+        diagLog('SW: none | Auth endpoint: reachable');
+        return { ok:true };
+      }catch(e){
+        const msg = `Auth probe failed: ${e?.message||e}`;
+        diagLog(msg);
+        return { ok:false, reason: msg };
+      }
     }
-    rerunDiagBtn.addEventListener('click', runDiagnostics);
 
-    /* ---------- 4) Auth (password) ---------- */
-    signupBtn.addEventListener('click', async () => {
-      const email = (emailInput.value || '').trim();
-      const pw = passwordInput.value || '';
-      if (!email || !pw) return alert('Please enter email and password');
-      signupBtn.disabled = true;
-      try {
-        const { data, error } = await sb.auth.signUp({ email, password: pw });
-        if (error) throw error;
-        alert('Sign up OK! If email confirmation is enabled, check your inbox.');
-      } catch (err) {
-        alert(`Sign up failed:\n${err?.message || JSON.stringify(err)}`);
-      } finally {
-        signupBtn.disabled = false;
+    async function runDiagnostics(){
+      const probe = await probeAuth();
+      if(!probe.ok){
+        alert(
+`Login probe could not reach Supabase.
+
+Reason:
+${probe.reason}
+
+Check:
+• Project URL exact: ${SUPABASE_URL}
+• Internet / VPN / Wi-Fi login page
+• Ad-block / tracking protection off for this site
+• Supabase Auth enabled (Settings → Authentication)
+• CORS Hardening not blocking your Netlify domain`
+        );
       }
-    });
+    }
+    document.getElementById('rerun-diag').addEventListener('click', runDiagnostics);
 
-    loginBtn.addEventListener('click', async () => {
-      const email = (emailInput.value || '').trim();
-      const pw = passwordInput.value || '';
-      if (!email || !pw) return alert('Please enter email and password');
-      loginBtn.disabled = true;
-      try {
-        const { data, error } = await sb.auth.signInWithPassword({ email, password: pw });
-        if (error) throw error;
-      } catch (err) {
-        alert(`Login error: ${err?.message || JSON.stringify(err)}`);
-      } finally {
-        loginBtn.disabled = false;
-      }
-    });
-
-    logoutBtn.addEventListener('click', async () => {
-      try { await sb.auth.signOut(); } catch (err) { alert(`Sign out failed:\n${err?.message||err}`); }
-    });
-
-    sb.auth.onAuthStateChange(async (_evt) => {
+    // ----- AUTH -----
+    signupBtn.addEventListener('click', async ()=>{
+      const email=(emailInput.value||'').trim();
+      const pw=passwordInput.value||'';
+      if(!email||!pw){ alert('Please enter email and password'); return; }
+      const probe=await probeAuth(); if(!probe.ok){ alert(`Login error: ${probe.reason}`); return; }
+      signupBtn.disabled=true;
       try{
-        const { data } = await sb.auth.getSession();
-        session = data.session;
-        currentUser = session?.user || null;
-        authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email || currentUser.id}` : 'Signed out';
-        if (currentUser) { showProject(); await refreshProjects(); } else showAuth();
-      }catch(e){ console.error(e); }
+        const { error } = await sb.auth.signUp({ email, password: pw });
+        if(error) throw error;
+        alert('Sign up OK. If confirmations are on, check your inbox.');
+      }catch(e){ alert(`Sign up failed: ${e?.message||e}`); }
+      finally{ signupBtn.disabled=false; }
+    });
+
+    loginBtn.addEventListener('click', async ()=>{
+      const email=(emailInput.value||'').trim();
+      const pw=passwordInput.value||'';
+      if(!email||!pw){ alert('Please enter email and password'); return; }
+      const probe=await probeAuth(); if(!probe.ok){ alert(`Login error: ${probe.reason}`); return; }
+      loginBtn.disabled=true;
+      try{
+        const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+        if(error) throw error;
+      }catch(e){ alert(`Login error: ${e?.message||e}`); }
+      finally{ loginBtn.disabled=false; }
+    });
+
+    logoutBtn.addEventListener('click', async()=>{ try{ await sb.auth.signOut(); }catch(e){ alert(e?.message||e);} });
+
+    sb.auth.onAuthStateChange(async()=>{
+      const { data } = await sb.auth.getSession();
+      session = data.session; currentUser = session?.user||null;
+      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email||currentUser.id}` : 'Signed out';
+      if(currentUser){ showProject(); await refreshProjects(); } else showAuth();
     });
 
     // initial
-    try{
-      const { data } = await sb.auth.getSession();
-      session = data.session;
-      currentUser = session?.user || null;
-      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email || currentUser.id}` : 'Signed out';
-      if (currentUser) { showProject(); await refreshProjects(); } else showAuth();
-    }catch(e){}
+    (async()=>{ const { data } = await sb.auth.getSession(); session=data.session; currentUser=session?.user||null;
+      authStateEl.textContent = currentUser ? `Signed in: ${currentUser.email||currentUser.id}` : 'Signed out';
+      if(currentUser){ showProject(); await refreshProjects(); } else showAuth();
+    })();
 
-    /* ---------- 5) Project menu ---------- */
+    // ----- Projects -----
     async function refreshProjects(){
       projectSelect.innerHTML = `<option value="">— Select a project —</option>`;
-      const { data, error } = await sb
-        .from('projects')
-        .select('id,name,is_archived')
-        .eq('user_id', currentUser.id)
-        .order('created_at', { ascending:false });
+      const { data, error } = await sb.from('projects').select('id,name,is_archived').eq('user_id', currentUser.id).order('created_at',{ascending:false});
       if(error){ alert(error.message); return; }
-      const showArchived = showArchivedProjects.checked;
-      for (const p of (data||[])) {
-        if (!showArchived && p.is_archived) continue;
-        const opt = document.createElement('option');
-        opt.value = p.id; opt.textContent = p.name + (p.is_archived?' (archived)':'');
-        projectSelect.appendChild(opt);
+      const showA = document.getElementById('show-archived-projects').checked;
+      for(const p of (data||[])){ if(!showA && p.is_archived) continue;
+        const o=document.createElement('option'); o.value=p.id; o.textContent=p.name+(p.is_archived?' (archived)':''); projectSelect.appendChild(o);
       }
     }
-    showArchivedProjects.addEventListener('change', refreshProjects);
+    document.getElementById('show-archived-projects').addEventListener('change', refreshProjects);
 
-    useProjectBtn.addEventListener('click', async ()=>{
-      const pid = projectSelect.value;
-      if(!pid) return alert('Select a project');
-      currentProjectId = pid;
-      await renderFloors(pid);
-      showApp();
+    document.getElementById('use-project').addEventListener('click', async()=>{
+      const pid=projectSelect.value; if(!pid) return alert('Select a project');
+      currentProjectId=pid; await renderFloors(pid); showApp();
     });
 
-    createProjectBtn.addEventListener('click', async ()=>{
-      const name = (projectNameInput.value||'').trim();
-      const addr = (projectAddressInput.value||'').trim();
+    document.getElementById('create-project').addEventListener('click', async()=>{
+      const name=(projectNameInput.value||'').trim(); const addr=(projectAddressInput.value||'').trim();
       if(!name) return alert('Enter a project name');
-      createProjectBtn.disabled = true;
+      createProjectBtn.disabled=true;
       try{
-        // reuse if exists
         const { data: ex } = await sb.from('projects').select('id').eq('user_id', currentUser.id).eq('name', name).limit(1);
-        if (ex && ex.length){ currentProjectId = ex[0].id; }
-        else {
+        if(ex&&ex.length){ currentProjectId=ex[0].id; }
+        else{
           const { data: ins, error } = await sb.from('projects').insert({ name, site_address: addr, user_id: currentUser.id }).select('id').single();
-          if (error) throw error;
-          currentProjectId = ins.id;
-          // seed room+tasks once (optional; ignore if SQL functions not present)
-          await sb.rpc('seed_full_project', { p_name:name, p_site:addr }).catch(()=>{});
-          await sb.rpc('seed_trade_tasks_for_project', { p_project_id: currentProjectId }).catch(()=>{});
+          if(error) throw error; currentProjectId=ins.id;
+          await sb.rpc('seed_full_project',{ p_name:name, p_site:addr }).catch(()=>{});
+          await sb.rpc('seed_trade_tasks_for_project',{ p_project_id: currentProjectId }).catch(()=>{});
         }
-        await refreshProjects();
-        projectSelect.value = currentProjectId;
-        await renderFloors(currentProjectId);
-        showApp();
-      }catch(e){ alert(e?.message||e); }
-      finally{ createProjectBtn.disabled = false; }
+        await refreshProjects(); projectSelect.value=currentProjectId; await renderFloors(currentProjectId); showApp();
+      }catch(e){ alert(e?.message||e); } finally{ createProjectBtn.disabled=false; }
     });
 
-    toggleArchiveBtn.addEventListener('click', async ()=>{
-      const pid = projectSelect.value; if(!pid) return alert('Pick a project first.');
-      const { data: p, error: e1 } = await sb.from('projects').select('is_archived').eq('id', pid).single();
-      if(e1) return alert(e1.message);
+    document.getElementById('toggle-archive-btn').addEventListener('click', async()=>{
+      const pid=projectSelect.value; if(!pid) return alert('Pick a project first.');
+      const { data:p, error:e1 } = await sb.from('projects').select('is_archived').eq('id', pid).single(); if(e1) return alert(e1.message);
       const { error } = await sb.from('projects').update({ is_archived: !p.is_archived }).eq('id', pid);
-      if(error) return alert(error.message);
-      await refreshProjects();
-      alert(!p.is_archived ? 'Project archived' : 'Project unarchived');
+      if(error) return alert(error.message); await refreshProjects(); alert(!p.is_archived?'Project archived':'Project unarchived');
     });
 
-    deleteProjectBtn.addEventListener('click', async ()=>{
-      const pid = projectSelect.value; if(!pid) return alert('Pick a project first.');
-      if (currentUser.id !== OWNER_UUID) return alert('Only the owner can hard-delete projects.');
-      if (!confirm('Delete this project and its content? This cannot be undone.')) return;
-      // delete rows (storage files not auto-deleted)
+    document.getElementById('delete-project').addEventListener('click', async()=>{
+      const pid=projectSelect.value; if(!pid) return alert('Pick a project first.');
+      if(currentUser.id!==OWNER_UUID) return alert('Only the owner can hard-delete projects.');
+      if(!confirm('Delete this project and its content?')) return;
       await sb.from('signoffs').delete().eq('project_id', pid).catch(()=>{});
       await sb.from('photos').delete().eq('project_id', pid).catch(()=>{});
-      await sb.from('tasks').delete().in('room_id', (await sb.from('rooms').select('id').eq('project_id', pid)).data?.map(r=>r.id)||[]).catch(()=>{});
+      const { data: rids } = await sb.from('rooms').select('id').eq('project_id', pid);
+      await sb.from('tasks').delete().in('room_id',(rids||[]).map(r=>r.id)).catch(()=>{});
       await sb.from('rooms').delete().eq('project_id', pid).catch(()=>{});
       const { error } = await sb.from('projects').delete().eq('id', pid);
       if(error) return alert(error.message);
-      currentProjectId = null;
-      await refreshProjects();
-      showProject();
-      alert('Project deleted.');
+      currentProjectId=null; await refreshProjects(); showProject(); alert('Project deleted.');
     });
 
-    clearArchBtn.addEventListener('click', async ()=>{
-      if (currentUser.id !== OWNER_UUID) return alert('Only the owner can clear archived photos.');
-      if (!confirm('Delete ALL archived photos for ALL your projects?')) return;
-      // If photos.archived exists, delete those. Otherwise try path LIKE '/archive/'
-      const { data: cols } = await sb.from('photos').select('*').limit(0);
-      const hasArchived = true; // UI intent; DB SQL should add column
-      const { data: list, error } = await sb.from('photos').select('id,path').eq('archived', true);
-      if(error){ alert(error.message); return; }
-      // delete storage files then rows
-      for (const p of (list||[])) {
-        await sb.storage.from('photos').remove([p.path]).catch(()=>{});
-      }
+    clearArchBtn.addEventListener('click', async()=>{
+      if(currentUser.id!==OWNER_UUID) return alert('Only the owner can clear archived photos.');
+      if(!confirm('Delete ALL archived photos for ALL your projects?')) return;
+      const { data:list, error } = await sb.from('photos').select('id,path').eq('archived', true);
+      if(error) return alert(error.message);
+      for(const p of (list||[])){ await sb.storage.from('photos').remove([p.path]).catch(()=>{}); }
       await sb.from('photos').delete().eq('archived', true);
-      await renderAllPhotos(currentProjectId);
+      if(currentProjectId) await renderAllPhotos(currentProjectId);
       alert('Archived photos cleared.');
     });
 
     homeBtn.addEventListener('click', ()=>{
-      // simple “home”: collapse details & clear search
-      searchInput.value = '';
-      document.querySelectorAll('details').forEach(d=>d.open=false);
-      window.scrollTo({top:0,behavior:'smooth'});
+      searchInput.value=''; document.querySelectorAll('details').forEach(d=>d.open=false); window.scrollTo({top:0,behavior:'smooth'});
     });
 
-    /* ---------- 6) Render floors/rooms/tasks ---------- */
+    // ----- Floors/rooms/tasks -----
     async function renderFloors(pid){
-      roomsEl.innerHTML = '<div class="muted">Loading…</div>';
-
-      // rooms
-      const { data: rooms, error: roomsErr } = await sb
-        .from('rooms')
-        .select('id,floor_name,room_name')
-        .eq('project_id', pid)
-        .order('floor_name');
-      if (roomsErr) { roomsEl.innerHTML = '<div class="muted">Could not load rooms.</div>'; return; }
-      roomsCache = rooms.slice();
-
-      // tasks (belonging to these rooms)
-      const roomIds = rooms.map(r=>r.id);
+      roomsEl.innerHTML='<div class="muted">Loading…</div>';
+      const { data: rooms, error: roomsErr } = await sb.from('rooms').select('id,floor_name,room_name').eq('project_id', pid).order('floor_name');
+      if(roomsErr){ roomsEl.innerHTML='<div class="muted">Could not load rooms.</div>'; return; }
+      roomsCache=rooms.slice();
+      const roomIds=rooms.map(r=>r.id);
       const { data: tasks } = await sb.from('tasks').select('id,room_id,trade,phase,description,done,notes');
-      tasksCache = (tasks||[]).filter(t => roomIds.includes(t.room_id)).map(t=>({...t, done: !!t.done}));
+      tasksCache=(tasks||[]).filter(t=>roomIds.includes(t.room_id)).map(t=>({...t,done:!!t.done}));
 
-      // group by floor
-      const floors = {};
-      for (const r of rooms) { (floors[r.floor_name||'Other'] ||= []).push(r); }
-
-      // ordered floors
-      const ordered = Object.keys(floors).sort((a,b)=>{
-        const ia=FLOOR_ORDER.indexOf(a), ib=FLOOR_ORDER.indexOf(b);
-        if(ia>-1 && ib>-1) return ia-ib;
-        if(ia>-1) return -1; if(ib>-1) return 1;
-        return a.localeCompare(b);
-      });
-
-      // html
-      const out = [];
-      for (const fname of ordered){
-        const fRooms = floors[fname].sort(by('room_name'));
-        const floorTaskList = tasksCache.filter(t => fRooms.some(r => r.id===t.room_id));
-        const floorTotal = floorTaskList.length || 1;
-        const floorDone = floorTaskList.filter(t => t.done).length;
-        const floorPct = Math.round(100 * floorDone / floorTotal);
-
+      const floors={}; for(const r of rooms){ (floors[r.floor_name||'Other'] ||= []).push(r); }
+      const ordered=Object.keys(floors).sort((a,b)=>{const ia=FLOOR_ORDER.indexOf(a),ib=FLOOR_ORDER.indexOf(b); if(ia>-1&&ib>-1) return ia-ib; if(ia>-1) return -1; if(ib>-1) return 1; return a.localeCompare(b);});
+      const out=[];
+      for(const fname of ordered){
+        const fRooms=floors[fname].sort(by('room_name'));
+        const floorTasks=tasksCache.filter(t=>fRooms.some(r=>r.id===t.room_id));
+        const total=floorTasks.length||1, done=floorTasks.filter(t=>t.done).length, pct=Math.round(100*done/total);
         out.push(`
           <details class="card" data-floor="${safe(fname)}">
             <summary class="row" style="gap:1rem;align-items:center">
               <strong>${safe(fname)}</strong>
-              <span class="small muted">${floorDone}/${floorTotal}</span>
-              <div class="progress" style="flex:1;max-width:380px"><span style="width:${floorPct}%"></span></div>
-              <span class="small muted">${floorPct}%</span>
+              <span class="small muted">${done}/${total}</span>
+              <div class="progress" style="flex:1;max-width:380px"><span style="width:${pct}%"></span></div>
+              <span class="small muted">${pct}%</span>
             </summary>
-            <div class="body">
-              ${fRooms.map(r => roomBlock(r)).join('')}
-            </div>
+            <div class="body">${fRooms.map(r=>roomBlock(r)).join('')}</div>
           </details>
         `);
       }
-
-      roomsEl.innerHTML = out.join('');
-      attachRoomHandlers();
-      refreshProgressUI();
-      await renderSignoffs(pid);
-      await renderAllPhotos(pid);
+      roomsEl.innerHTML=out.join('');
+      attachRoomHandlers(); refreshProgressUI();
+      await renderSignoffs(pid); await renderAllPhotos(pid);
     }
 
     function roomBlock(r){
-      const rTasks = tasksCache.filter(t => t.room_id === r.id);
-      const total = rTasks.length || 1;
-      const done = rTasks.filter(t => t.done).length;
-      const pct = Math.round(100 * done / total);
-
-      // one section per trade, fixed checklist
-      const tradeSections = TRADE_DEFS.map(td=>{
-        const list = td.phases.map(ph=>{
-          // find/create a task record for this room+trade+phase
-          const ex = tasksCache.find(t => t.room_id===r.id && t.trade===td.name && t.phase===ph);
-          const checked = ex?.done ? 'checked' : '';
-          const tid = ex?.id ?? '';
-          return `
-            <label class="row" style="gap:.5rem;margin:.25rem 0">
-              <input type="checkbox" data-task-id="${tid}" data-room="${r.id}" data-trade="${td.name}" data-phase="${safe(ph)}" ${checked}/>
-              <span>${safe(ph)}</span>
-            </label>
-          `;
+      const rTasks=tasksCache.filter(t=>t.room_id===r.id);
+      const total=rTasks.length||1, done=rTasks.filter(t=>t.done).length, pct=Math.round(100*done/total);
+      const tradeSections=TRADE_DEFS.map(td=>{
+        const list=td.phases.map(ph=>{
+          const ex=tasksCache.find(t=>t.room_id===r.id && t.trade===td.name && t.phase===ph);
+          const checked=ex?.done?'checked':''; const tid=ex?.id??'';
+          return `<label class="row" style="gap:.5rem;margin:.25rem 0">
+            <input type="checkbox" data-task-id="${tid}" data-room="${r.id}" data-trade="${td.name}" data-phase="${safe(ph)}" ${checked}/>
+            <span>${safe(ph)}</span>
+          </label>`;
         }).join('');
-        return `
-          <div class="task trade-${td.name}">
-            <div class="row" style="justify-content:space-between">
-              <span class="chip trade">${td.name}</span>
-              <span class="chip">General</span>
-            </div>
-            <div style="margin:.5rem 0">${list || '<div class="muted small">No tasks yet</div>'}</div>
-            <div style="margin-top:.5rem">
-              <label class="small muted">Notes</label>
-              <textarea class="note" data-note-for="${r.id}:${td.name}:General" placeholder="Add notes…"></textarea>
-            </div>
-            <div class="row" style="margin-top:.5rem">
-              <input type="file" accept="image/*" data-upload-for="${r.id}:${td.name}:General"/>
-              <button class="btn signoff-btn"
-                      data-room-id="${r.id}"
-                      data-task-id=""
-                      data-trade="${td.name}"
-                      data-phase="General">Sign off</button>
-            </div>
+        return `<div class="task trade-${td.name}">
+          <div class="row" style="justify-content:space-between">
+            <span class="chip trade">${td.name}</span><span class="chip">General</span>
           </div>
-        `;
+          <div style="margin:.5rem 0">${list||'<div class="muted small">No tasks yet</div>'}</div>
+          <div style="margin-top:.5rem">
+            <label class="small muted">Notes</label>
+            <textarea class="note" data-note-for="${r.id}:${td.name}:General" placeholder="Add notes…"></textarea>
+          </div>
+          <div class="row" style="margin-top:.5rem">
+            <input type="file" accept="image/*" data-upload-for="${r.id}:${td.name}:General"/>
+            <button class="btn signoff-btn" data-room-id="${r.id}" data-task-id="" data-trade="${td.name}" data-phase="General">Sign off</button>
+          </div>
+        </div>`;
       }).join('');
-
-      return `
-        <details class="card" data-room="${r.id}">
-          <summary class="row" style="gap:1rem;align-items:center">
-            <strong>${safe(r.room_name)}</strong>
-            <span class="small muted">${done}/${total}</span>
-            <div class="progress" style="flex:1;max-width:300px"><span style="width:${pct}%"></span></div>
-            <span class="small muted">${pct}%</span>
-          </summary>
-          <div class="body" data-room-body="${r.id}">
-            ${tradeSections}
-          </div>
-        </details>
-      `;
+      return `<details class="card" data-room="${r.id}">
+        <summary class="row" style="gap:1rem;align-items:center">
+          <strong>${safe(r.room_name)}</strong>
+          <span class="small muted">${done}/${total}</span>
+          <div class="progress" style="flex:1;max-width:300px"><span style="width:${pct}%"></span></div>
+          <span class="small muted">${pct}%</span>
+        </summary>
+        <div class="body" data-room-body="${r.id}">${tradeSections}</div>
+      </details>`;
     }
 
     function refreshProgressUI(){
-      // per-room
       roomsEl.querySelectorAll('details[data-room]').forEach(roomWrap=>{
-        const roomId = Number(roomWrap.getAttribute('data-room'));
-        const rTasks = tasksCache.filter(t => t.room_id===roomId);
-        const total = rTasks.length || 1;
-        const done = rTasks.filter(t=>t.done).length;
-        const pct = Math.round(100*done/total);
-        const summary = roomWrap.querySelector('summary');
-        if(summary){
-          summary.querySelector('.progress > span').style.width = pct+'%';
-          const spans = summary.querySelectorAll('.small.muted');
-          if(spans[0]) spans[0].textContent = `${done}/${total}`;
-          if(spans[1]) spans[1].textContent = `${pct}%`;
-        }
+        const roomId=Number(roomWrap.getAttribute('data-room'));
+        const rTasks=tasksCache.filter(t=>t.room_id===roomId);
+        const total=rTasks.length||1, done=rTasks.filter(t=>t.done).length, pct=Math.round(100*done/total);
+        const s=roomWrap.querySelector('summary');
+        if(s){ s.querySelector('.progress>span').style.width=pct+'%';
+          const spans=s.querySelectorAll('.small.muted'); if(spans[0]) spans[0].textContent=`${done}/${total}`; if(spans[1]) spans[1].textContent=`${pct}%`; }
       });
-
-      // per-floor
       roomsEl.querySelectorAll('details[data-floor]').forEach(fWrap=>{
-        const roomIds = Array.from(fWrap.querySelectorAll('details[data-room]')).map(x=>Number(x.getAttribute('data-room')));
-        const fTasks = tasksCache.filter(t=> roomIds.includes(t.room_id));
-        const total = fTasks.length || 1;
-        const done = fTasks.filter(t=>t.done).length;
-        const pct = Math.round(100*done/total);
-        const summary = fWrap.querySelector('summary');
-        if(summary){
-          summary.querySelector('.progress > span').style.width = pct+'%';
-          const spans = summary.querySelectorAll('.small.muted');
-          if(spans[0]) spans[0].textContent = `${done}/${total}`;
-          if(spans[1]) spans[1].textContent = `${pct}%`;
-        }
+        const roomIds=Array.from(fWrap.querySelectorAll('details[data-room]')).map(x=>Number(x.getAttribute('data-room')));
+        const fTasks=tasksCache.filter(t=>roomIds.includes(t.room_id));
+        const total=fTasks.length||1, done=fTasks.filter(t=>t.done).length, pct=Math.round(100*done/total);
+        const s=fWrap.querySelector('summary');
+        if(s){ s.querySelector('.progress>span').style.width=pct+'%';
+          const spans=s.querySelectorAll('.small.muted'); if(spans[0]) spans[0].textContent=`${done}/${total}`; if(spans[1]) spans[1].textContent=`${pct}%`; }
       });
-
-      // overall
-      const allTotal = tasksCache.length || 1;
-      const allDone = tasksCache.filter(t=>t.done).length;
-      const pct = Math.round(100*allDone/allTotal);
-      overallBar.style.width = pct + '%';
-      overallPct.textContent = pct + '%';
+      const allTotal=tasksCache.length||1, allDone=tasksCache.filter(t=>t.done).length, pct=Math.round(100*allDone/allTotal);
+      overallBar.style.width=pct+'%'; overallPct.textContent=pct+'%';
     }
 
     function attachRoomHandlers(){
-      // checklist toggle (create task on the fly if missing)
-      roomsEl.querySelectorAll('input[type="checkbox"][data-task-id],input[type="checkbox"][data-room][data-trade]').forEach(cb=>{
-        cb.addEventListener('change', async (e)=>{
-          const el = e.target;
-          let id = el.getAttribute('data-task-id');
-          const done = el.checked;
-          const roomId = Number(el.getAttribute('data-room'));
-          const trade = el.getAttribute('data-trade');
-          const phase = el.getAttribute('data-phase');
+      roomsEl.querySelectorAll('input[type="checkbox"][data-room]').forEach(cb=>{
+        cb.addEventListener('change', async(e)=>{
+          const el=e.target; let id=el.getAttribute('data-task-id'); const done=el.checked;
+          const roomId=Number(el.getAttribute('data-room')); const trade=el.getAttribute('data-trade'); const phase=el.getAttribute('data-phase');
           try{
             if(!id){
-              // create (avoid duplicate by unique index room_id+trade+phase if present)
-              const { data: ins, error } = await sb.from('tasks')
-                .insert({ room_id: roomId, trade, phase, description: phase, done })
-                .select('id,room_id,trade,phase,description,done')
-                .single();
-              if(error) throw error;
-              id = ins.id; el.setAttribute('data-task-id', id);
-              tasksCache.push(ins);
-            } else {
-              const { error } = await sb.from('tasks').update({ done, updated_at: new Date().toISOString() }).eq('id', id);
-              if(error) throw error;
-              const t = tasksCache.find(x=>String(x.id)===String(id)); if(t) t.done = done;
+              const { data:ins, error } = await sb.from('tasks').insert({ room_id:roomId, trade, phase, description:phase, done })
+                .select('id,room_id,trade,phase,description,done').single();
+              if(error) throw error; id=ins.id; el.setAttribute('data-task-id',id); tasksCache.push(ins);
+            }else{
+              const { error } = await sb.from('tasks').update({ done, updated_at:new Date().toISOString() }).eq('id', id);
+              if(error) throw error; const t=tasksCache.find(x=>String(x.id)===String(id)); if(t) t.done=done;
             }
             refreshProgressUI();
-          }catch(err){
-            alert(err?.message||String(err));
-            el.checked = !done; // revert
-          }
+          }catch(err){ alert(err?.message||String(err)); el.checked=!done; }
         });
       });
-
-      // notes (debounced)
-      const timers = new Map();
+      const timers=new Map();
       roomsEl.querySelectorAll('textarea[data-note-for]').forEach(ta=>{
         ta.addEventListener('input', ()=>{
-          const key = ta.getAttribute('data-note-for');
-          clearTimeout(timers.get(key));
-          timers.set(key, setTimeout(async ()=>{
-            const [roomId, trade, phase] = key.split(':');
-            const { error } = await sb.from('tasks')
-              .update({ notes: ta.value, updated_at: new Date().toISOString() })
-              .eq('room_id', roomId).eq('trade', trade).eq('phase', phase);
+          const key=ta.getAttribute('data-note-for'); clearTimeout(timers.get(key));
+          timers.set(key,setTimeout(async()=>{
+            const [roomId,trade,phase]=key.split(':');
+            const { error } = await sb.from('tasks').update({ notes:ta.value, updated_at:new Date().toISOString() })
+              .eq('room_id',roomId).eq('trade',trade).eq('phase',phase);
             if(error) alert(error.message);
-          }, 600));
+          },600));
         });
       });
-
-      // uploads
       roomsEl.querySelectorAll('input[type="file"][data-upload-for]').forEach(inp=>{
-        inp.addEventListener('change', async ()=>{
-          const file = inp.files?.[0]; if(!file) return;
-          const [roomId, trade, phase] = (inp.getAttribute('data-upload-for')||'').split(':');
-          const path = `${currentProjectId}/${roomId}/${trade}/${Date.now()}_${file.name}`;
-          const { error: upErr } = await sb.storage.from('photos').upload(path, file, { cacheControl: '3600', upsert:false });
-          if(upErr) return alert(upErr.message);
-          await sb.from('photos').insert({ project_id: currentProjectId, room_id: roomId, trade, phase, path, uploaded_by: currentUser.email, archived:false }).catch(()=>{});
-          await renderAllPhotos(currentProjectId);
-          alert('Photo uploaded');
+        inp.addEventListener('change', async()=>{
+          const file=inp.files?.[0]; if(!file) return;
+          const [roomId,trade,phase]=(inp.getAttribute('data-upload-for')||'').split(':');
+          const path=`${currentProjectId}/${roomId}/${trade}/${Date.now()}_${file.name}`;
+          const { error:upErr } = await sb.storage.from('photos').upload(path, file, { cacheControl:'3600', upsert:false }); if(upErr) return alert(upErr.message);
+          await sb.from('photos').insert({ project_id:currentProjectId, room_id:roomId, trade, phase, path, uploaded_by: currentUser.email, archived:false }).catch(()=>{});
+          await renderAllPhotos(currentProjectId); alert('Photo uploaded');
         });
       });
     }
 
-    /* ---------- 7) Dashboard lists ---------- */
     async function renderSignoffs(pid){
-      const { data: s, error } = await sb
-        .from('signoffs')
+      const { data:s, error } = await sb.from('signoffs')
         .select('id,created_at,trade,phase,signed_by_name,rooms!inner(room_name)')
-        .eq('project_id', pid).order('created_at', { ascending:false }).limit(200);
-      if(error){ allSignoffsEl.innerHTML = '<div class="muted">Error loading sign-offs</div>'; return; }
-      allSignoffsEl.innerHTML = (s||[]).map(x=>`
+        .eq('project_id',pid).order('created_at',{ascending:false}).limit(200);
+      if(error){ allSignoffsEl.innerHTML='<div class="muted">Error loading sign-offs</div>'; return; }
+      allSignoffsEl.innerHTML=(s||[]).map(x=>`
         <div class="row" style="gap:.6rem;padding:.25rem 0;border-bottom:1px dashed #eef2f4">
-          <span class="chip">${safe(x.rooms?.room_name || 'Room')}</span>
+          <span class="chip">${safe(x.rooms?.room_name||'Room')}</span>
           <span class="chip">${safe(x.trade)}</span>
-          <span class="chip">${safe(x.phase || '')}</span>
-          <span class="small muted">by ${safe(x.signed_by_name || '')}</span>
+          <span class="chip">${safe(x.phase||'')}</span>
+          <span class="small muted">by ${safe(x.signed_by_name||'')}</span>
           <span class="small muted">${new Date(x.created_at).toLocaleString()}</span>
-        </div>
-      `).join('');
+        </div>`).join('');
     }
 
     async function renderAllPhotos(pid){
-      allPhotosEl.innerHTML = '<div class="muted">Loading…</div>';
-      const showArch = showArchivedPhotos.checked;
-      // try archived column; if not present, just list all
-      let ph=null, error=null;
-      ({ data: ph, error } = await sb
-        .from('photos')
-        .select('id,path,uploaded_by,created_at,archived')
-        .eq('project_id', pid)
-        .order('created_at', { ascending:false })
-        .limit(300));
-      if(error){ allPhotosEl.innerHTML = '<div class="muted">Error loading photos</div>'; return; }
-
-      if(!showArch) ph = (ph||[]).filter(p => !p.archived);
-
-      allPhotosEl.innerHTML = '';
-      for (const p of (ph||[])) {
-        const { data: pub } = sb.storage.from('photos').getPublicUrl(p.path);
-        const wrap = document.createElement('div');
-        wrap.className = 'thumb';
-        const img = new Image();
-        img.src = pub.publicUrl; img.alt = p.path.split('/').pop();
-        img.title = `${p.uploaded_by || ''}\n${new Date(p.created_at).toLocaleString()}`;
-        img.addEventListener('click', () => window.open(pub.publicUrl, '_blank'));
-        const bar = document.createElement('div');
-        bar.className = 'minirow';
-        const b1 = document.createElement('button');
-        b1.textContent = p.archived ? 'Unarchive' : 'Archive';
-        b1.addEventListener('click', async (ev)=>{
-          ev.stopPropagation();
-          const { error } = await sb.from('photos').update({ archived: !p.archived }).eq('id', p.id);
-          if(error) return alert(error.message);
-          await renderAllPhotos(pid);
-        });
-        const b2 = document.createElement('button');
-        b2.textContent = 'Delete';
-        b2.addEventListener('click', async (ev)=>{
-          ev.stopPropagation();
-          if(!confirm('Delete this photo permanently?')) return;
-          await sb.storage.from('photos').remove([p.path]).catch(()=>{});
-          const { error } = await sb.from('photos').delete().eq('id', p.id);
-          if(error) return alert(error.message);
-          await renderAllPhotos(pid);
-        });
-        bar.appendChild(b1); bar.appendChild(b2);
-        wrap.appendChild(img); wrap.appendChild(bar);
-        allPhotosEl.appendChild(wrap);
+      allPhotosEl.innerHTML='<div class="muted">Loading…</div>';
+      const showArch=document.getElementById('show-archived-photos').checked;
+      const { data: ph, error } = await sb.from('photos').select('id,path,uploaded_by,created_at,archived').eq('project_id',pid).order('created_at',{ascending:false}).limit(300);
+      if(error){ allPhotosEl.innerHTML='<div class="muted">Error loading photos</div>'; return; }
+      const list = showArch ? ph : (ph||[]).filter(p=>!p.archived);
+      allPhotosEl.innerHTML='';
+      for(const p of (list||[])){
+        const { data:pub } = sb.storage.from('photos').getPublicUrl(p.path);
+        const wrap=document.createElement('div'); wrap.className='thumb';
+        const img=new Image(); img.src=pub.publicUrl; img.alt=p.path.split('/').pop(); img.title=`${p.uploaded_by||''}\n${new Date(p.created_at).toLocaleString()}`;
+        img.addEventListener('click',()=>window.open(pub.publicUrl,'_blank'));
+        const bar=document.createElement('div'); bar.className='minirow';
+        const b1=document.createElement('button'); b1.textContent=p.archived?'Unarchive':'Archive';
+        b1.addEventListener('click',async(ev)=>{ev.stopPropagation(); const { error }=await sb.from('photos').update({ archived:!p.archived }).eq('id',p.id); if(error) return alert(error.message); await renderAllPhotos(pid);});
+        const b2=document.createElement('button'); b2.textContent='Delete';
+        b2.addEventListener('click',async(ev)=>{ev.stopPropagation(); if(!confirm('Delete this photo permanently?')) return; await sb.storage.from('photos').remove([p.path]).catch(()=>{}); const { error }=await sb.from('photos').delete().eq('id',p.id); if(error) return alert(error.message); await renderAllPhotos(pid);});
+        bar.appendChild(b1); bar.appendChild(b2); wrap.appendChild(img); wrap.appendChild(bar); allPhotosEl.appendChild(wrap);
       }
-      if (allPhotosEl.children.length===0) allPhotosEl.innerHTML = '<div class="muted">No photos yet</div>';
+      if(allPhotosEl.children.length===0) allPhotosEl.innerHTML='<div class="muted">No photos yet</div>';
     }
-    showArchivedPhotos.addEventListener('change', ()=> currentProjectId && renderAllPhotos(currentProjectId));
+    document.getElementById('show-archived-photos').addEventListener('change', ()=> currentProjectId && renderAllPhotos(currentProjectId));
 
-    /* ---------- 8) Search (room/floor) ---------- */
-    searchInput.addEventListener('input', ()=>{
-      const q = (searchInput.value||'').toLowerCase();
-      if(!q){ document.querySelectorAll('details[data-floor]').forEach(d=> d.open=false); }
+    // Search
+    document.getElementById('search').addEventListener('input', ()=>{
+      const q=(searchInput.value||'').toLowerCase();
+      if(!q){ document.querySelectorAll('details[data-floor]').forEach(d=>d.open=false); }
       roomsEl.querySelectorAll('details[data-floor]').forEach(f=>{
         let hit=false;
         f.querySelectorAll('details[data-room]').forEach(r=>{
-          const name = r.querySelector('summary strong')?.textContent.toLowerCase()||'';
-          const matches = name.includes(q);
-          r.style.display = matches? '' : 'none';
-          if(matches) hit=true;
+          const name=r.querySelector('summary strong')?.textContent.toLowerCase()||'';
+          const m=name.includes(q); r.style.display=m?'':'none'; if(m) hit=true;
         });
-        f.style.display = hit? '' : 'none';
-        f.open = hit && q.length>0;
+        f.style.display=hit?'':'none'; f.open=hit && q.length>0;
       });
     });
 
-    /* ---------- 9) Global Sign-off button ---------- */
-    document.addEventListener('click', async (e)=>{
-      const btn = e.target.closest('.signoff-btn'); if(!btn) return;
-      if (!currentProjectId || !session?.user) return alert('Please sign in and choose a project first.');
-      const roomId = btn.dataset.roomId || null;
-      const taskId = btn.dataset.taskId || null;
-      const trade = btn.dataset.trade || null;
-      const phase = btn.dataset.phase || null;
-      const whoId = session.user.id;
-      const whoName = session.user.email || session.user.user_metadata?.full_name || 'unknown';
-      if (!roomId || !trade) return alert('Missing room or trade on sign-off button.');
-
-      const { error } = await sb.from('signoffs').insert({
-        project_id: currentProjectId, room_id: roomId, task_id: taskId,
-        trade, phase, signed_by: whoId, signed_by_name: whoName
-      });
-      if (error) return alert(error.message);
-      btn.textContent = 'Signed'; btn.disabled = true;
-      await renderSignoffs(currentProjectId);
+    // Sign-off button
+    document.addEventListener('click', async(e)=>{
+      const btn=e.target.closest('.signoff-btn'); if(!btn) return;
+      if(!currentProjectId||!session?.user) return alert('Please sign in and choose a project first.');
+      const roomId=btn.dataset.roomId||null, taskId=btn.dataset.taskId||null, trade=btn.dataset.trade||null, phase=btn.dataset.phase||null;
+      const whoId=session.user.id, whoName=session.user.email||session.user.user_metadata?.full_name||'unknown';
+      if(!roomId||!trade) return alert('Missing room or trade on sign-off button.');
+      const { error } = await sb.from('signoffs').insert({ project_id:currentProjectId, room_id:roomId, task_id:taskId, trade, phase, signed_by:whoId, signed_by_name:whoName });
+      if(error) return alert(error.message); btn.textContent='Signed'; btn.disabled=true; await renderSignoffs(currentProjectId);
     });
 
   })();
