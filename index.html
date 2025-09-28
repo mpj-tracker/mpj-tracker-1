@@ -155,35 +155,46 @@
   </main>
 
   <script>
-  (async function () {
-    /* 0) Prevent stale SW caching (and provide a manual purge button) */
-    async function purgeServiceWorkers() {
+(async function () {
+  /* ---- tiny diag helper (must be first) ---- */
+  const diagEl = document.getElementById('diag'); // may be null; that's fine
+  function diagLog(msg) {
+    if (diagEl) diagEl.textContent = String(msg);
+    console.log('[diag]', msg);
+  }
+
+  /* 0) Prevent stale SW caching (and provide a manual purge button) */
+  async function purgeServiceWorkers() {
+    try {
       if ('serviceWorker' in navigator) {
-        try {
-          const regs = await navigator.serviceWorker.getRegistrations();
-          await Promise.all(regs.map(r => r.unregister()));
-          if (window.caches?.keys) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map(k => caches.delete(k)));
-          }
-          console.log('[sw] Unregistered and caches cleared');
-          diagLog('SW: none');
-        } catch (e) {
-          console.warn('[sw] purge failed', e);
+        const regs = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(regs.map(r => r.unregister()));
+        if (window.caches?.keys) {
+          const keys = await caches.keys();
+          await Promise.all(keys.map(k => caches.delete(k)));
         }
       }
+      console.log('[sw] Unregistered and caches cleared');
+      diagLog('SW: none');
+    } catch (e) {
+      console.warn('[sw] purge failed', e);
+      diagLog('SW purge failed');
     }
-    await purgeServiceWorkers();
-    document.getElementById('purge-sw').addEventListener('click', purgeServiceWorkers);
+  }
 
-    /* 1) Supabase client (your live project) */
-    const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
-    const OWNER_UUID = "5728601a-4cfa-4a1a-bd0c-f6caea3ae3e8"; // only this user sees Delete Project button
+  // run purge once on load; bind the manual button if it exists
+  await purgeServiceWorkers();
+  document.getElementById('purge-sw')?.addEventListener('click', purgeServiceWorkers);
 
-    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-      auth: { persistSession:true, autoRefreshToken:true, detectSessionInUrl:true }
-    });
+  /* 1) Supabase client (your live project) */
+  const SUPABASE_URL = "https://zpnqruthpknncpilztxf.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWx6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
+  const OWNER_UUID = "5728601a-4cfa-4a1a-bd0c-f6caea3ae3e8";
+
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+  });
+
 
     /* 2) DOM refs */
     const authBox = document.getElementById('auth-box');
