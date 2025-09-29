@@ -150,6 +150,11 @@
     // ---------- Diagnostics FIRST ----------
     const diagEl = document.getElementById('diag');
     const diagLog = (m)=>{ if(diagEl) diagEl.textContent=String(m); console.log('[diag]',m); };
+    <button class="btn" onclick="(async()=>{try{
+  const r=await fetch(SUPABASE_URL+'/auth/v1/health'); 
+  alert('Direct fetch OK: '+r.status);
+}catch(e){ alert('Direct fetch failed: '+e); }})()">Direct fetch test</button>
+
 
     // ---------- SW purge ----------
     async function purgeServiceWorkers(){
@@ -170,7 +175,7 @@
     document.getElementById('purge-sw')?.addEventListener('click', purgeServiceWorkers);
 
     // ---------- Supabase client ----------
-    const SUPABASE_URL = "https://zpnqruthpknncpiztxf.supabase.co";
+    const SUPABASE_URL = "https://zpnqruthpknncpiiztxf.supabase.co";
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpwbnFydXRocGtubmNwaWl6dHhmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTg0NjM4NzQsImV4cCI6MjA3NDAzOTg3NH0.-9ReQMcI2izlwEP72ya6KXqnIgmBnH5b_wMRtwcFp-4";
     const OWNER_UUID = "5728601a-4cfa-4a1a-bd0c-f6caea3ae3e8";
 
